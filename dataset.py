@@ -234,7 +234,7 @@ class NuSceneDataset(Dataset):
                 'instance_token'       : ego_instance_token,           # Type : str
                 'sample_token'         : ego_sample_token,             # Type : str
                 'ego_cur_pos'          : ego_pose,                     # Type : list [x,y,yaw_rate] --> global 
-                'ego_state'            : ego_states,                   # Type : list     | Unit : [m/s, m/s^2, rad/sec]    
+                'ego_state'            : ego_states,                   # Type : list [vel,accel,yaw_rate]    | Unit : [m/s, m/s^2, rad/sec]    
                 'past_global_ego_pos'  : past_poses,                   # Type : np.array([global_x, global_y, global_yaw])
                 'future_global_ego_pos': future_poses,                 # Type : np.array([global_x, global_y, global_yaw])
                 'past_cur_diff_ego'    : past_cur_time_diff,           # Difference between current and past sampling time
@@ -242,7 +242,7 @@ class NuSceneDataset(Dataset):
                 # agents nearby ego (all local data in ego coordinate)
                 'num_agents'           : num_agents,
                 'agent_cur_pose'       : np.array(agent_local_pose_list),             # Type : np.row_stack([local_x, local_y, local_yaw])
-                'agent_state'          : np.array(agent_states_list),                 # Type : np.row_stack      | Unit : [m/s, m/s^2, rad/sec]    
+                'agent_state'          : np.array(agent_states_list),                 # Type : np.row_stack([vel,accel,yaw_rate])      | Unit : [m/s, m/s^2, rad/sec]    
                 'agent_past_pose'      : np.array(agent_past_local_poses_list),       # Type : np.row_stack([local_x, local_y, local_yaw])
                 'agent_future_pose'    : np.array(agent_future_local_poses_list)      # Type : np.row_stack([local_x, local_y, local_yaw])
                 }
