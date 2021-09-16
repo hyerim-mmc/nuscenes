@@ -20,6 +20,7 @@ class Config(object):
 
     def __init__(self):
         self.set = 'mini'
+        self.train_mode = True
         self.dataset_str = 'v1.0-mini'
 
         self.device = 'cpu'
@@ -54,4 +55,4 @@ class Config(object):
         self.patch_angle = 0                       # orientation where North is up
         self.canvas_size = (224,224)
 
-
+        self.num_max_agent = 10

@@ -1,5 +1,4 @@
 import torch
-from torch.utils.data import dataset
 import utils
 import numpy as np
 
@@ -13,6 +12,13 @@ from nuscenes.prediction.input_representation.agents import AgentBoxesWithFadedH
 from nuscenes.prediction.input_representation.static_layers import StaticLayerRasterizer
 from nuscenes.prediction.input_representation.interface import InputRepresentation
 from nuscenes.prediction.input_representation.combinators import Rasterizer
+
+
+"""
+TODO
+yawrate check : quaternion_yaw(Quaternion(annotation['rotation'])) 
+                or helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token) ?
+""" 
 
 
 class NuSceneDataset(Dataset):
@@ -148,14 +154,14 @@ class NuSceneDataset(Dataset):
         ego_instance_token, ego_sample_token = self.dataset[idx].split('_')
         ego_annotation = self.helper.get_sample_annotation(ego_instance_token, ego_sample_token)
 
-        ego_pose = utils.get_pose_from_annot(ego_annotation)
+        ego_pose = np.array(utils.get_pose_from_annot(ego_annotation))
         ego_vel = self.helper.get_velocity_for_agent(ego_instance_token, ego_sample_token)
         ego_accel = self.helper.get_acceleration_for_agent(ego_instance_token, ego_sample_token)
         ego_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
 
         # Filter unresonable data (make nan to zero)
         [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])        
-        ego_states = [ego_vel, ego_accel, ego_yawrate]
+        ego_states = np.array([ego_vel, ego_accel, ego_yawrate])
 
 
         # GLOBAL history
@@ -178,6 +184,11 @@ class NuSceneDataset(Dataset):
         # Select agents nearby Ego
         num_agents, agents_list = self.select_agents(ego_sample_token=ego_sample_token, ego_pose=ego_pose)
 
+        agent_local_pose_list = []
+        agent_states_list = []
+        agent_past_local_poses_list = []
+        agent_future_local_poses_list = []
+
         for i in range(num_agents):
             assert num_agents == len(agents_list), "num_agents != len(agents_list)"
             assert ego_sample_token == agents_list[i]['sample_token'], "agents sample token != ego sample token"
@@ -187,14 +198,16 @@ class NuSceneDataset(Dataset):
             agent_annotation = self.helper.get_sample_annotation(instance_token_agent, sample_token_agent)
 
             agent_pose = utils.get_pose_from_annot(agent_annotation)
-            agent_local_poses  = utils.convert_global_to_local_forpose(ego_pose, agent_pose)
+            agent_local_pose  = np.array(utils.convert_global_to_local_forpose(ego_pose, agent_pose))
+            agent_local_pose_list.append(agent_local_pose)
             agent_vel = self.helper.get_velocity_for_agent(instance_token_agent, sample_token_agent)
             agent_accel = self.helper.get_acceleration_for_agent(instance_token_agent, sample_token_agent)
             agent_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
-
+            
             # Filter unresonable data (make nan to zero)
             [agent_vel, agent_accel, agent_yawrate] = utils.data_filter([agent_vel, agent_accel, agent_yawrate])        
-            agent_states = [agent_vel, agent_accel, agent_yawrate]
+            agent_states = np.array([agent_vel, agent_accel, agent_yawrate])
+            agent_states_list.append(agent_states)
 
             # Agent LOCAL history 
             past_global_poses = self.helper.get_past_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
@@ -204,7 +217,9 @@ class NuSceneDataset(Dataset):
             past_global_poses = utils.get_pose(past_global_poses)
             future_global_poses = utils.get_pose(future_global_poses)
             agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)
+            agent_past_local_poses_list.append(agent_past_local_poses)
             agent_future_local_poses = utils.convert_global_to_local_forhistory(ego_pose, future_global_poses)
+            agent_future_local_poses_list.append(agent_future_local_poses)
 
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
@@ -215,31 +230,25 @@ class NuSceneDataset(Dataset):
             plt.imshow(img)
 
         return {'img'                  : img,                          # Type : np.array
-        # ego vehicle                   
+                # ego vehicle                   
                 'instance_token'       : ego_instance_token,           # Type : str
                 'sample_token'         : ego_sample_token,             # Type : str
                 'ego_cur_pos'          : ego_pose,                     # Type : list [x,y,yaw_rate] --> global 
-                'ego_state'            : ego_states,                   # Type : list | Unit : [m/s, m/s^2, rad/sec]    
+                'ego_state'            : ego_states,                   # Type : list     | Unit : [m/s, m/s^2, rad/sec]    
                 'past_global_ego_pos'  : past_poses,                   # Type : np.array([global_x, global_y, global_yaw])
                 'future_global_ego_pos': future_poses,                 # Type : np.array([global_x, global_y, global_yaw])
                 'past_cur_diff_ego'    : past_cur_time_diff,           # Difference between current and past sampling time
                 'future_cur_diff_ego'  : future_cur_time_diff,         # Difference between current and future sampling time
-        # agents nearby ego
+                # agents nearby ego (all local data in ego coordinate)
                 'num_agents'           : num_agents,
-                'agent_cur_pose'       : agent_local_poses,            # Type : list [local_x, local_y, local_yaw]
-                'agent_state'          : agent_states,                 # Type : list | Unit : [m/s, m/s^2, rad/sec]    
-                'agent_past_pose'      : agent_past_local_poses,       # Type : np.column_stack([local_x, local_y, local_yaw])
-                'agent_future_pose'    : agent_future_local_poses      # Type : np.column_stack([local_x, local_y, local_yaw])
+                'agent_cur_pose'       : np.array(agent_local_pose_list),             # Type : np.row_stack([local_x, local_y, local_yaw])
+                'agent_state'          : np.array(agent_states_list),                 # Type : np.row_stack      | Unit : [m/s, m/s^2, rad/sec]    
+                'agent_past_pose'      : np.array(agent_past_local_poses_list),       # Type : np.row_stack([local_x, local_y, local_yaw])
+                'agent_future_pose'    : np.array(agent_future_local_poses_list)      # Type : np.row_stack([local_x, local_y, local_yaw])
                 }
-        # return ego_pose[2], ego_yawrate
 
         # When {pos, vel, accel} is nan, it will be shown as 0 
         # History List of records.  The rows decrease with time, i.e the last row occurs the farthest in the past.
-
-"""
-TODO
-1. yawrate : quaternion_yaw(Quaternion(annotation['rotation'])) or helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token) ?
-""" 
 
     
 
