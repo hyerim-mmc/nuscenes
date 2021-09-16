@@ -1,30 +1,11 @@
 class Config(object):
-    """
-    * Annotation freq = 2 Hz
-    * Dataset __getitem__() output format :
-        agent_states = {'instance_token'     : instance_token_img,
-                        'sample_token'       : sample_token_img,
-                        'img'                : img,
-                        'type'               : agent_type,
-                        'pos'                : current_gloabl_pose,
-                        'vel'                : current_velocity,
-                        'accel'              : current_acceleration,
-                        'yaw_rate'           : current_yaw_rate,
-                        'past_local_pos'     : past_local_poses,
-                        'future_local_pos'   : future_local_poses,
-                        'past_cur_diff'      : past_cur_time_diff,
-                        'future_cur_diff'    : future_cur_time_diff }
-                                                                            # vel(m/s), accel(m/s^2), yaw_rate(rad/sec)
-        When {pos, vel, accel} is nan, it will be shown as 0 
-    """
-
     def __init__(self):
         self.set = 'mini'
-        self.train_mode = True
         self.dataset_str = 'v1.0-mini'
+        self.dataset_path = 'data/sets/nuscenes'
 
         self.device = 'cpu'
-        self.dataset_path = 'data/sets/nuscenes'
+        self.train_mode = True
 
         # for history
         self.past_seconds = 6
@@ -55,4 +36,5 @@ class Config(object):
         self.patch_angle = 0                       # orientation where North is up
         self.canvas_size = (224,224)
 
+        # Agent Processing
         self.num_max_agent = 10
