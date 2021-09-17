@@ -14,11 +14,6 @@ from nuscenes.prediction.input_representation.interface import InputRepresentati
 from nuscenes.prediction.input_representation.combinators import Rasterizer
 
 
-"""
-TODO
-yawrate check : quaternion_yaw(Quaternion(annotation['rotation'])) 
-                or helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token) ?
-""" 
 
 
 class NuSceneDataset(Dataset):
@@ -212,9 +207,14 @@ class NuSceneDataset(Dataset):
             # Agent LOCAL history 
             past_global_poses = self.helper.get_past_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=self.past_seconds, in_agent_frame=False, just_xy=False)  
+            print("past_global_poses : ", past_global_poses)
+
             future_global_poses = self.helper.get_future_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=self.future_seconds, in_agent_frame=False, just_xy=False) 
+            print("future_global_poses : ", future_global_poses)
+
             past_global_poses = utils.get_pose(past_global_poses)
+
             future_global_poses = utils.get_pose(future_global_poses)
             agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)
             agent_past_local_poses_list.append(agent_past_local_poses)
@@ -233,8 +233,8 @@ class NuSceneDataset(Dataset):
                 # ego vehicle                   
                 'instance_token'       : ego_instance_token,           # Type : str
                 'sample_token'         : ego_sample_token,             # Type : str
-                'ego_cur_pos'          : ego_pose,                     # Type : list [x,y,yaw_rate] --> global 
-                'ego_state'            : ego_states,                   # Type : list [vel,accel,yaw_rate]    | Unit : [m/s, m/s^2, rad/sec]    
+                'ego_cur_pos'          : ego_pose,                     # Type : list [x,y,yaw] --> global 
+                'ego_state'            : ego_states,                   # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)   | Unit : [m/s, m/s^2, rad/sec]    
                 'past_global_ego_pos'  : past_poses,                   # Type : np.array([global_x, global_y, global_yaw])
                 'future_global_ego_pos': future_poses,                 # Type : np.array([global_x, global_y, global_yaw])
                 'past_cur_diff_ego'    : past_cur_time_diff,           # Difference between current and past sampling time
@@ -242,12 +242,14 @@ class NuSceneDataset(Dataset):
                 # agents nearby ego (all local data in ego coordinate)
                 'num_agents'           : num_agents,
                 'agent_cur_pose'       : np.array(agent_local_pose_list),             # Type : np.row_stack([local_x, local_y, local_yaw])
-                'agent_state'          : np.array(agent_states_list),                 # Type : np.row_stack([vel,accel,yaw_rate])      | Unit : [m/s, m/s^2, rad/sec]    
-                'agent_past_pose'      : np.array(agent_past_local_poses_list),       # Type : np.row_stack([local_x, local_y, local_yaw])
-                'agent_future_pose'    : np.array(agent_future_local_poses_list)      # Type : np.row_stack([local_x, local_y, local_yaw])
+                'agent_state'          : np.array(agent_states_list),                 # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)     | Unit : [m/s, m/s^2, rad/sec]    
+                'agent_past_pose'      : np.array(agent_past_local_poses_list),       # Type : np.row_stack([local_x, local_y, local_yaw])                
+                'agent_future_pose'    : np.array(agent_future_local_poses_list),     # Type : np.row_stack([local_x, local_y, local_yaw])
+                # 'num_agent_past_hist'  : np.array(num_agent_past_hist),
+                # 'num_agent_future_hist': np.array(num_agent_future_hist)
                 }
 
-        # When {pos, vel, accel} is nan, it will be shown as 0 
+        # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
         # History List of records.  The rows decrease with time, i.e the last row occurs the farthest in the past.
 
     
@@ -256,5 +258,5 @@ class NuSceneDataset(Dataset):
 if __name__ == "__main__":
     dataset = NuSceneDataset()
     for i in range(dataset.__len__()):
-        print(dataset.__getitem__(i))
+        dataset.__getitem__(i)
     # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)
