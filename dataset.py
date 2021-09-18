@@ -183,6 +183,8 @@ class NuSceneDataset(Dataset):
         agent_states_list = []
         agent_past_local_poses_list = []
         agent_future_local_poses_list = []
+        num_agent_past_hist = []
+        num_agent_future_hist = []
 
         for i in range(num_agents):
             assert num_agents == len(agents_list), "num_agents != len(agents_list)"
@@ -207,27 +209,29 @@ class NuSceneDataset(Dataset):
             # Agent LOCAL history 
             past_global_poses = self.helper.get_past_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=self.past_seconds, in_agent_frame=False, just_xy=False)  
-            print("past_global_poses : ", past_global_poses)
 
             future_global_poses = self.helper.get_future_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=self.future_seconds, in_agent_frame=False, just_xy=False) 
-            print("future_global_poses : ", future_global_poses)
 
             past_global_poses = utils.get_pose(past_global_poses)
-
             future_global_poses = utils.get_pose(future_global_poses)
+
             agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)
             agent_past_local_poses_list.append(agent_past_local_poses)
+            num_agent_past_hist.append(len(agent_past_local_poses))
             agent_future_local_poses = utils.convert_global_to_local_forhistory(ego_pose, future_global_poses)
             agent_future_local_poses_list.append(agent_future_local_poses)
+            num_agent_future_hist.append(len(agent_future_local_poses))
 
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
 
         AssertionError (self.rasterized is False and self.show_maps is True), "Check config again! Img can show only when rasterized flag is True"
         if self.show_maps:
-            plt.figure('input_representation')
+            plt.figure('input_representation_{}'.format(idx))
             plt.imshow(img)
+            plt.show()
+
 
         return {'img'                  : img,                          # Type : np.array
                 # ego vehicle                   
@@ -241,12 +245,12 @@ class NuSceneDataset(Dataset):
                 'future_cur_diff_ego'  : future_cur_time_diff,         # Difference between current and future sampling time
                 # agents nearby ego (all local data in ego coordinate)
                 'num_agents'           : num_agents,
-                'agent_cur_pose'       : np.array(agent_local_pose_list),             # Type : np.row_stack([local_x, local_y, local_yaw])
-                'agent_state'          : np.array(agent_states_list),                 # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)     | Unit : [m/s, m/s^2, rad/sec]    
-                'agent_past_pose'      : np.array(agent_past_local_poses_list),       # Type : np.row_stack([local_x, local_y, local_yaw])                
-                'agent_future_pose'    : np.array(agent_future_local_poses_list),     # Type : np.row_stack([local_x, local_y, local_yaw])
-                # 'num_agent_past_hist'  : np.array(num_agent_past_hist),
-                # 'num_agent_future_hist': np.array(num_agent_future_hist)
+                'agent_cur_pose'       : np.array(agent_local_pose_list),                           # Type : np.row_stack([local_x, local_y, local_yaw])
+                'agent_state'          : np.array(agent_states_list),                               # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)     | Unit : [m/s, m/s^2, rad/sec]    
+                'agent_past_pose'      : np.array(agent_past_local_poses_list, dtype=object),       # Type : np.row_stack([local_x, local_y, local_yaw])                
+                'agent_future_pose'    : np.array(agent_future_local_poses_list, dtype=object),     # Type : np.row_stack([local_x, local_y, local_yaw])
+                'num_agent_past_hist'  : np.array(num_agent_past_hist),                             # Type : np.array([len_past_history for each agent])  
+                'num_agent_future_hist': np.array(num_agent_future_hist)                            # Type : np.array([len_future_history for each agent])
                 }
 
         # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
