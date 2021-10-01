@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 
 from matplotlib import pyplot as plt
-from config import Config
+from utils import Json_Parser
 from torch.utils.data.dataset import Dataset
 from nuscenes.nuscenes import NuScenes
 from nuscenes.prediction.helper import PredictHelper
@@ -15,18 +15,19 @@ from nuscenes.prediction.input_representation.interface import InputRepresentati
 from nuscenes.prediction.input_representation.combinators import Rasterizer
 
 
-
 class NuSceneDataset_CoverNet(Dataset):
-    def __init__(self,layers_list=None, color_list=None):
+    def __init__(self, train_mode, config_file_name, layers_list=None, color_list=None):
         super().__init__()
-        config = Config()
-        self.device = torch.device(config.device if torch.cuda.is_available() else 'cpu')
-        self.dataroot = config.dataset_path
-        self.nuscenes = NuScenes(config.dataset_str, dataroot=self.dataroot)
+        parser = Json_Parser(config_file_name)
+        config = parser.load_parser()
+
+        self.device = torch.device(config['LEARNING']['device'] if torch.cuda.is_available() else 'cpu')
+        self.dataroot = config['DATASET']['dataset_path']
+        self.nuscenes = NuScenes(config['DATASET']['dataset_str'], dataroot=self.dataroot)
         self.helper = PredictHelper(self.nuscenes)
 
-        self.set = config.set
-        self.train_mode = config.train_mode
+        self.set = config['DATASET']['set']
+        self.train_mode = train_mode
         if self.set == 'train':
             self.train_set = get_prediction_challenge_split("train", dataroot=self.dataroot)
             self.val_set = get_prediction_challenge_split("train_val", dataroot=self.dataroot)
@@ -38,27 +39,27 @@ class NuSceneDataset_CoverNet(Dataset):
 
 
         if layers_list is None:
-            self.layers_list = config.map_layers_list
-        if color_list is None:
-            self.color_list = config.color_list
+            self.layers_list = config['PREPROCESS']['map_layers_list']
+        # if color_list is None:
+        #     self.color_list = config['PREPROCESS']['color_list']
 
-        self.resolution = config.resolution                 
-        self.meters_ahead = config.meters_ahead
-        self.meters_behind = config.meters_behind
-        self.meters_left = config.meters_left 
-        self.meters_right = config.meters_right 
-        self.patch_box = config.patch_box
-        self.patch_angle = config.patch_angle
-        self.canvas_size = config.canvas_size   
+        self.resolution = config['PREPROCESS']['resolution']         
+        self.meters_ahead = config['PREPROCESS']['meters_ahead']
+        self.meters_behind = config['PREPROCESS']['meters_behind']
+        self.meters_left = config['PREPROCESS']['meters_left']
+        self.meters_right = config['PREPROCESS']['meters_right'] 
+        self.patch_box = config['PREPROCESS']['patch_box']
+        self.patch_angle = config['PREPROCESS']['patch_angle']
+        self.canvas_size = config['PREPROCESS']['canvas_size'] 
 
-        self.past_seconds = config.past_seconds 
-        self.future_seconds = config.future_seconds 
+        self.past_seconds = config['HISTORY']['past_seconds']
+        self.future_seconds = config['HISTORY']['future_seconds']
 
-        self.rasterized = config.rasterized
+        self.rasterized = config['PREPROCESS']['rasterized']
         if self.rasterized:
             self.static_layer = StaticLayerRasterizer(helper=self.helper, 
                                                 layer_names=self.layers_list, 
-                                                colors=self.color_list,
+                                                # colors=self.color_list,
                                                 resolution=self.resolution, 
                                                 meters_ahead=self.meters_ahead, 
                                                 meters_behind=self.meters_behind,
@@ -70,14 +71,11 @@ class NuSceneDataset_CoverNet(Dataset):
                                             agent=self.agent_layer, 
                                             combinator=Rasterizer())     
 
-        self.scenes = self.nuscenes.scene
-        self.samples = self.nuscenes.sample
+        self.show_maps = config['PREPROCESS']['show_maps']
+        self.save_maps = config['PREPROCESS']['save_maps']
 
-        self.show_maps = config.show_maps
-        self.save_maps = config.save_maps
-
-        self.num_max_agent = config.num_max_agent
-        self.mask = config.mask
+        self.num_max_agent = config['PREPROCESS']['num_max_agent']
+        self.mask = config['PREPROCESS']['mask']
 
         if self.save_maps:
             if self.train_mode:
@@ -138,7 +136,7 @@ class NuSceneDataset_CoverNet(Dataset):
 
         # Filter unresonable data (make nan to zero)
         [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])        
-        ego_states = np.array([ego_vel, ego_accel, ego_yawrate])
+        ego_states = np.array([[ego_vel, ego_accel, ego_yawrate]])
 
         # GLOBAL history
         past = self.helper.get_past_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
@@ -167,7 +165,7 @@ class NuSceneDataset_CoverNet(Dataset):
         return {'img'                  : img,                          # Type : np.array
                 'instance_token'       : ego_instance_token,           # Type : str
                 'sample_token'         : ego_sample_token,             # Type : str
-                'ego_state'            : ego_states,                   # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)   |   Unit : [m/s, m/s^2, rad/sec]    
+                'ego_state'            : ego_states,                   # Type : np.array([[vel,accel,yaw_rate]]) --> local(ego's coord)   |   Unit : [m/s, m/s^2, rad/sec]    
                 'past_global_ego_pos'  : past_poses,                   # Type : np.array([global_x, global_y, global_yaw])
                 'future_global_ego_pos': future_poses,                 # Type : np.array([global_x, global_y, global_yaw])
                 'records_in_patch'     : records_in_patch              # Type : list

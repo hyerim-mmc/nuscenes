@@ -18,7 +18,7 @@ from nuscenes.prediction.input_representation.combinators import Rasterizer
 
 
 class NuSceneDataset(Dataset):
-    def __init__(self):
+    def __init__(self, train_mode):
         super().__init__()
         config = Config()
 
@@ -28,7 +28,7 @@ class NuSceneDataset(Dataset):
         self.helper = PredictHelper(self.nuscenes)
 
         self.set = config.set
-        self.train_mode = config.train_mode
+        self.train_mode = train_mode
         if self.set == 'train':
             self.train_set = get_prediction_challenge_split("train", dataroot=self.dataroot)
             self.val_set = get_prediction_challenge_split("train_val", dataroot=self.dataroot)
@@ -69,9 +69,6 @@ class NuSceneDataset(Dataset):
             self.input_repr = InputRepresentation(static_layer=self.static_layer, 
                                                 agent=self.agent_layer, 
                                                 combinator=Rasterizer())     
-
-        self.scenes = self.nuscenes.scene
-        self.samples = self.nuscenes.sample
 
         self.show_maps = config.show_maps
         self.save_maps = config.save_maps

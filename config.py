@@ -2,16 +2,16 @@ class Config(object):
     def __init__(self):
         self.set = 'mini'           # 'train' or 'mini'
         self.dataset_str = 'v1.0-mini'
-        self.dataset_path = 'data/sets/nuscenes'
+        self.dataset_path = '/home/hyerim/data/sets/nuscenes'
 
         self.device = 'cpu'
         self.train_mode = True
-
-        # for history
+        
+        # Agent history
         self.past_seconds = 6                       
         self.future_seconds = 6
 
-        # Image Processin
+        # Image Processing
         self.show_maps = True
         self.save_maps = False
         self.rasterized = True

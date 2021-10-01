@@ -1,10 +1,21 @@
 # Code written by govvijaycal from Github
 import os
+import json
 import numpy as np
 from PIL import Image
 from nuscenes.eval.common.utils import quaternion_yaw
 from nuscenes.prediction.input_representation.interface import Combinator
 from pyquaternion.quaternion import Quaternion
+
+
+class Json_Parser:
+    def __init__(self, file_name):
+        with open(file_name) as json_file:
+            self.config = json.load(json_file)
+
+    def load_parser(self):
+        return self.config
+
 
 def data_filter(data):
 	for i in range(len(data)):
