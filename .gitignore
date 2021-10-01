@@ -2,4 +2,8 @@ data
 .vscode
 __pycache__
 nuscenes-devkit
-nuscenes-prediction-challenge-trajectory-sets
+result
+trajectory-sets/*.pkl
+*.pkl
+*.pickle
+*.pth
