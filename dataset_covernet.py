@@ -1,5 +1,6 @@
 import torch
 import utils
+import pickle
 import numpy as np
 
 from matplotlib import pyplot as plt
@@ -76,6 +77,8 @@ class NuSceneDataset_CoverNet(Dataset):
         self.save_maps = config.save_maps
 
         self.num_max_agent = config.num_max_agent
+        self.mask = config.mask
+
         if self.save_maps:
             if self.train_mode:
                 utils.save_map(self.train_set, self.set + 'train', self.input_repr)
@@ -91,6 +94,35 @@ class NuSceneDataset_CoverNet(Dataset):
             return len(self.val_set)
 
 
+    def select_agents(self, ego_sample_token, mask):
+        sample = self.helper.get_annotations_for_sample(ego_sample_token)
+
+        all_agents_in_sample = []
+        for i in range(len(sample)):
+            # for check consistency
+            assert ego_sample_token in sample[i]['sample_token'], "Something went wrong! Check again"
+
+            if 'vehicle' in sample[i]['category_name']:
+                all_agents_in_sample.append(sample[i])
+
+        records_in_patch = []
+        for i in range(len(all_agents_in_sample)):
+            agent_pose_for_check = all_agents_in_sample[i]['translation']
+            bool_in_egoframe = (agent_pose_for_check[0] > mask[0]) and (agent_pose_for_check[0] < mask[2]) and \
+                                (agent_pose_for_check[1] < mask[1]) and (agent_pose_for_check[1] > mask[3])     # check if each agent is in the frame of ego (Type : BOOL)
+            if bool_in_egoframe:
+                data = {}
+                data['instance_token'] = all_agents_in_sample[i]['instance_token']
+                data['sample_token'] = all_agents_in_sample[i]['sample_token']
+                data['translation'] = all_agents_in_sample[i]['translation']
+                records_in_patch.append(data)
+        
+        print("Records_in_patch :  ", records_in_patch)
+        
+        return records_in_patch
+
+
+
     def __getitem__(self, idx):
         if self.train_mode:
             self.dataset = self.train_set
@@ -99,7 +131,6 @@ class NuSceneDataset_CoverNet(Dataset):
 
         #################################### State processing ####################################
         ego_instance_token, ego_sample_token = self.dataset[idx].split('_')
-        ego_annotation = self.helper.get_sample_annotation(ego_instance_token, ego_sample_token)
 
         ego_vel = self.helper.get_velocity_for_agent(ego_instance_token, ego_sample_token)
         ego_accel = self.helper.get_acceleration_for_agent(ego_instance_token, ego_sample_token)
@@ -117,6 +148,12 @@ class NuSceneDataset_CoverNet(Dataset):
         past_poses = utils.get_pose(past)
         future_poses = utils.get_pose(future)
 
+        # Filter certain records (e.g. intersection)
+        records_in_patch = self.select_agents(ego_sample_token, self.mask)
+        with open("records_in_patch.pickle","wb") as fw:
+            pickle.dump(records_in_patch, fw)
+            print("[Records_in_patch] saved.")
+
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
 
@@ -124,18 +161,21 @@ class NuSceneDataset_CoverNet(Dataset):
         if self.show_maps:
             plt.figure('input_representation')
             plt.imshow(img)
+            plt.show()
 
 
         return {'img'                  : img,                          # Type : np.array
                 'instance_token'       : ego_instance_token,           # Type : str
                 'sample_token'         : ego_sample_token,             # Type : str
-                'ego_state'            : ego_states,                   # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)   | Unit : [m/s, m/s^2, rad/sec]    
+                'ego_state'            : ego_states,                   # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)   |   Unit : [m/s, m/s^2, rad/sec]    
                 'past_global_ego_pos'  : past_poses,                   # Type : np.array([global_x, global_y, global_yaw])
-                'future_global_ego_pos': future_poses                 # Type : np.array([global_x, global_y, global_yaw])
+                'future_global_ego_pos': future_poses,                 # Type : np.array([global_x, global_y, global_yaw])
+                'records_in_patch'     : records_in_patch              # Type : list
                 }
 
         # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
         # History List of records.  The rows decrease with time, i.e the last row occurs the farthest in the past.
+        # Records_in_patch contains datas in certain area such as intersection.
 
     
 
@@ -144,4 +184,5 @@ if __name__ == "__main__":
     dataset = NuSceneDataset_CoverNet()
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
+    # dataset.__getitem__(0)
     # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)

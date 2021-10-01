@@ -1,6 +1,6 @@
 class Config(object):
     def __init__(self):
-        self.set = 'mini'
+        self.set = 'mini'           # 'train' or 'mini'
         self.dataset_str = 'v1.0-mini'
         self.dataset_path = 'data/sets/nuscenes'
 
@@ -8,10 +8,10 @@ class Config(object):
         self.train_mode = True
 
         # for history
-        self.past_seconds = 6
+        self.past_seconds = 6                       
         self.future_seconds = 6
 
-        # Image Processing
+        # Image Processin
         self.show_maps = True
         self.save_maps = False
         self.rasterized = True
@@ -20,12 +20,20 @@ class Config(object):
         self.ego_center = [0.25, 0.5]
 
         # Map Processing
-        self.map_layers_list = ['drivable_area', 'road_segment', 'road_block',
-                                'lane', 'ped_crossing', 'walkway', 'stop_line',
-                                'carpark_area', 'road_divider', 'lane_divider', 'traffic_light']
-        self.color_list = [(255, 255, 255), (255, 255, 255), (255, 255, 255),
-                            (255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255),
-                            (255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255)]
+        # self.map_layers_list = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
+        #             'walkway', 'stop_line', 'carpark_area', 
+        #             'road_divider', 'lane_divider', 'traffic_light']
+        # self.color_list = [(0, 0, 0), (0, 0, 0), (0, 0, 0),
+        #                     (0, 0, 0), (0, 0, 0), (0, 0, 0), 
+        #                     (0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0)]   
+        # self.color_list = [(255, 255, 255), (255, 255, 255), (255, 255, 255),
+        #                     (255, 255, 255), (255, 255, 255), (255, 255, 255), 
+        #                     (255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255)]    
+
+        self.map_layers_list = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
+                    'road_divider', 'lane_divider', 'traffic_light']
+        self.color_list = [(255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255),
+                 (255, 255, 255),(255, 255, 255),(255, 255, 255), ]
 
         self.resolution = 0.1                       # meters/pixel
         self.meters_ahead = 40
@@ -38,3 +46,6 @@ class Config(object):
 
         # Agent Processing
         self.num_max_agent = 10
+
+        # Mask (Use when you get data in specific region)
+        self.mask = [300,1250,500,1000]

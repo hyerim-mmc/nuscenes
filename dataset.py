@@ -9,6 +9,7 @@ from nuscenes.nuscenes import NuScenes
 from nuscenes.prediction.helper import PredictHelper
 from nuscenes.eval.prediction.splits import get_prediction_challenge_split
 from nuscenes.prediction.input_representation.agents import AgentBoxesWithFadedHistory
+
 from nuscenes.prediction.input_representation.static_layers import StaticLayerRasterizer
 from nuscenes.prediction.input_representation.interface import InputRepresentation
 from nuscenes.prediction.input_representation.combinators import Rasterizer
@@ -17,7 +18,7 @@ from nuscenes.prediction.input_representation.combinators import Rasterizer
 
 
 class NuSceneDataset(Dataset):
-    def __init__(self,layers_list=None, color_list=None):
+    def __init__(self):
         super().__init__()
         config = Config()
 
@@ -38,10 +39,8 @@ class NuSceneDataset(Dataset):
             self.mode = 'mini'
 
 
-        if layers_list is None:
-            self.layers_list = config.map_layers_list
-        if color_list is None:
-            self.color_list = config.color_list
+        self.layers_list = config.map_layers_list
+        self.color_list = config.color_list
 
         self.resolution = config.resolution                 
         self.meters_ahead = config.meters_ahead
@@ -68,8 +67,8 @@ class NuSceneDataset(Dataset):
             self.agent_layer = AgentBoxesWithFadedHistory(helper=self.helper, 
                                                     seconds_of_history=self.past_seconds)
             self.input_repr = InputRepresentation(static_layer=self.static_layer, 
-                                            agent=self.agent_layer, 
-                                            combinator=Rasterizer())     
+                                                agent=self.agent_layer, 
+                                                combinator=Rasterizer())     
 
         self.scenes = self.nuscenes.scene
         self.samples = self.nuscenes.sample

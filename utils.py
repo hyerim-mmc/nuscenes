@@ -3,6 +3,7 @@ import os
 import numpy as np
 from PIL import Image
 from nuscenes.eval.common.utils import quaternion_yaw
+from nuscenes.prediction.input_representation.interface import Combinator
 from pyquaternion.quaternion import Quaternion
 
 def data_filter(data):
