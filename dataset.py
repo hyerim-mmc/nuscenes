@@ -38,7 +38,6 @@ class NuSceneDataset(Dataset):
             self.val_set = get_prediction_challenge_split("mini_val", dataroot=self.dataroot)
             self.mode = 'mini'
 
-
         self.layers_list = config.map_layers_list
         self.color_list = config.color_list
 
@@ -134,15 +133,13 @@ class NuSceneDataset(Dataset):
         Select ego vehicle using idx
         Represent states of agents nearby ego vehicle
         """
-
         if self.train_mode:
             self.dataset = self.train_set
         else:
             self.dataset = self.val_set
 
-
         #################################### Ego states ####################################
-        ego_instance_token, ego_sample_token = self.dataset[idx].split('_')
+        ego_instance_token, ego_sample_token = self.dataset[idx].split("_")
         ego_annotation = self.helper.get_sample_annotation(ego_instance_token, ego_sample_token)
 
         ego_pose = np.array(utils.get_pose_from_annot(ego_annotation))
@@ -256,7 +253,7 @@ class NuSceneDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = NuSceneDataset()
+    dataset = NuSceneDataset(train_mode=True)
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
     # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)

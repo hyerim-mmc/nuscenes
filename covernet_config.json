@@ -15,7 +15,7 @@
         "val_batch_size" : 1,
         "print_size" : 10,
         "weight_path" : "./resnet50-19c8e357.pth",
-        "trajectory_set_path" : "./nuscenes-prediction-challenge-trajectory-sets/epsilon_8.pkl"
+        "trajectory_set_path" : "./trajectory-sets/epsilon_8.pkl"
     },
 
     "HISTORY" : {
