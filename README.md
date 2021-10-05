@@ -25,6 +25,8 @@ This repository contains an implementation of [CoverNet](https://arxiv.org/pdf/1
 5. Download Tensorboard ```pip install tensorboard``` or ```conda install tensorboard```
 
 ## Run
+Please check DATASET_PATH in advance!
+
 1. Dataset Processing
     - Write own parsing configuration ```config.py```
     - Run ```python dataset.py```
