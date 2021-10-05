@@ -62,7 +62,12 @@ class NuSceneDataset(Dataset):
                                                 meters_left=self.meters_left, 
                                                 meters_right=self.meters_right)
             self.agent_layer = AgentBoxesWithFadedHistory(helper=self.helper, 
-                                                    seconds_of_history=self.past_seconds)
+                                                seconds_of_history=self.past_seconds, 
+                                                resolution=self.resolution, 
+                                                meters_ahead=self.meters_ahead, 
+                                                meters_behind=self.meters_behind,
+                                                meters_left=self.meters_left, 
+                                                meters_right=self.meters_right)
             self.input_repr = InputRepresentation(static_layer=self.static_layer, 
                                                 agent=self.agent_layer, 
                                                 combinator=Rasterizer())     

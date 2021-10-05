@@ -17,7 +17,7 @@ class Config(object):
         self.rasterized = True
         self.raster_size = [224,224]
         self.pixel_size = [0.5, 0.5]
-        self.ego_center = [0.25, 0.5]
+        self.ego_center = [0.25, 0.5]       # doesn't work
 
         # Map Processing
         # self.map_layers_list = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
