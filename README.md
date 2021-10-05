@@ -32,6 +32,6 @@ Please check DATASET_PATH in advance!
     - Run ```python dataset.py```
     
 2. CoverNet Implementation
-    - Write own parsing/learning configuration ```covernet_config.json```
-    - Run ```python dataset_covernet.py```
-    - Results will be saved in ```result``` folder
+    - Write own parsing/learning configuration ```covernet/covernet_config.json```
+    - Run ```python covernet/train.py```
+    - Results will be saved in ```covernet/result``` folder
