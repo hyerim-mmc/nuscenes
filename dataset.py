@@ -46,9 +46,7 @@ class NuSceneDataset(Dataset):
         self.meters_behind = config.meters_behind
         self.meters_left = config.meters_left 
         self.meters_right = config.meters_right 
-        self.patch_box = config.patch_box
         self.patch_angle = config.patch_angle
-        self.canvas_size = config.canvas_size   
 
         self.past_seconds = config.past_seconds 
         self.future_seconds = config.future_seconds 
@@ -140,6 +138,8 @@ class NuSceneDataset(Dataset):
 
         #################################### Ego states ####################################
         ego_instance_token, ego_sample_token = self.dataset[idx].split("_")
+        print(idx, "th : ")
+        print(ego_instance_token, ego_sample_token)
         ego_annotation = self.helper.get_sample_annotation(ego_instance_token, ego_sample_token)
 
         ego_pose = np.array(utils.get_pose_from_annot(ego_annotation))
@@ -256,4 +256,5 @@ if __name__ == "__main__":
     dataset = NuSceneDataset(train_mode=True)
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
+
     # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)

@@ -37,9 +37,7 @@
         "meters_behind" : 10,
         "meters_left" : 25,
         "meters_right" : 25,        
-        "patch_box" : [300, 1700, 100, 100],
         "patch_angle" : 0,                  
-        "canvas_size" : [224, 224],
         "num_max_agent" : 10,
         "mask" : [300,1250,500,1000]
     }

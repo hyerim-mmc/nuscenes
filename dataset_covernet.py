@@ -48,9 +48,7 @@ class NuSceneDataset_CoverNet(Dataset):
         self.meters_behind = config['PREPROCESS']['meters_behind']
         self.meters_left = config['PREPROCESS']['meters_left']
         self.meters_right = config['PREPROCESS']['meters_right'] 
-        self.patch_box = config['PREPROCESS']['patch_box']
         self.patch_angle = config['PREPROCESS']['patch_angle']
-        self.canvas_size = config['PREPROCESS']['canvas_size'] 
 
         self.past_seconds = config['HISTORY']['past_seconds']
         self.future_seconds = config['HISTORY']['future_seconds']

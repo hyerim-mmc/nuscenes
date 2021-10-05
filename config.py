@@ -40,9 +40,7 @@ class Config(object):
         self.meters_behind = 10
         self.meters_left = 25
         self.meters_right = 25        
-        self.patch_box = (300, 1700, 100, 100)
         self.patch_angle = 0                       # orientation where North is up
-        self.canvas_size = (224,224)
 
         # Agent Processing
         self.num_max_agent = 10
