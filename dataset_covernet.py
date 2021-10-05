@@ -40,8 +40,10 @@ class NuSceneDataset_CoverNet(Dataset):
 
         if layers_list is None:
             self.layers_list = config['PREPROCESS']['map_layers_list']
-        # if color_list is None:
-        #     self.color_list = config['PREPROCESS']['color_list']
+        if color_list is None:
+            self.color_list = []
+            for i in range(len(self.layers_list)):
+                self.color_list.append((255,255,255))
 
         self.resolution = config['PREPROCESS']['resolution']         
         self.meters_ahead = config['PREPROCESS']['meters_ahead']
@@ -57,7 +59,7 @@ class NuSceneDataset_CoverNet(Dataset):
         if self.rasterized:
             self.static_layer = StaticLayerRasterizer(helper=self.helper, 
                                                 layer_names=self.layers_list, 
-                                                # colors=self.color_list,
+                                                colors=self.color_list,
                                                 resolution=self.resolution, 
                                                 meters_ahead=self.meters_ahead, 
                                                 meters_behind=self.meters_behind,
@@ -177,7 +179,7 @@ class NuSceneDataset_CoverNet(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = NuSceneDataset_CoverNet()
+    dataset = NuSceneDataset_CoverNet(train_mode=True, config_file_name='covernet_config.json')
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
     # dataset.__getitem__(0)

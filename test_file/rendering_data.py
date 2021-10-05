@@ -8,8 +8,8 @@ import numpy as np
 from nuscenes import NuScenes
 from nuscenes.map_expansion.map_api import NuScenesMap
 
-nuscenes = NuScenes('v1.0-mini', dataroot='./data/sets/nuscenes')
-nusc_map = NuScenesMap(dataroot='./data/sets/nuscenes', map_name='singapore-onenorth')
+nuscenes = NuScenes('v1.0-mini', dataroot='/home/hyerim/data/sets/nuscenes')
+nusc_map = NuScenesMap(dataroot='/home/hyerim/data/sets/nuscenes', map_name='singapore-onenorth')
 
 with open("records_in_patch.pickle","rb") as fr:
     data = pickle.load(fr)
