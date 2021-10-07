@@ -51,26 +51,24 @@ class NuSceneDataset(Dataset):
         self.past_seconds = config.past_seconds 
         self.future_seconds = config.future_seconds 
 
-        self.rasterized = config.rasterized
-        if self.rasterized:
-            self.static_layer = StaticLayerRasterizer(helper=self.helper, 
-                                                layer_names=self.layers_list, 
-                                                colors=self.color_list,
-                                                resolution=self.resolution, 
-                                                meters_ahead=self.meters_ahead, 
-                                                meters_behind=self.meters_behind,
-                                                meters_left=self.meters_left, 
-                                                meters_right=self.meters_right)
-            self.agent_layer = AgentBoxesWithFadedHistory(helper=self.helper, 
-                                                seconds_of_history=self.past_seconds, 
-                                                resolution=self.resolution, 
-                                                meters_ahead=self.meters_ahead, 
-                                                meters_behind=self.meters_behind,
-                                                meters_left=self.meters_left, 
-                                                meters_right=self.meters_right)
-            self.input_repr = InputRepresentation(static_layer=self.static_layer, 
-                                                agent=self.agent_layer, 
-                                                combinator=Rasterizer())     
+        self.static_layer = StaticLayerRasterizer(helper=self.helper, 
+                                            layer_names=self.layers_list, 
+                                            colors=self.color_list,
+                                            resolution=self.resolution, 
+                                            meters_ahead=self.meters_ahead, 
+                                            meters_behind=self.meters_behind,
+                                            meters_left=self.meters_left, 
+                                            meters_right=self.meters_right)
+        self.agent_layer = AgentBoxesWithFadedHistory(helper=self.helper, 
+                                            seconds_of_history=self.past_seconds, 
+                                            resolution=self.resolution, 
+                                            meters_ahead=self.meters_ahead, 
+                                            meters_behind=self.meters_behind,
+                                            meters_left=self.meters_left, 
+                                            meters_right=self.meters_right)
+        self.input_repr = InputRepresentation(static_layer=self.static_layer, 
+                                            agent=self.agent_layer, 
+                                            combinator=Rasterizer())     
 
         self.show_maps = config.show_maps
         self.save_maps = config.save_maps
@@ -223,8 +221,6 @@ class NuSceneDataset(Dataset):
 
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
-
-        AssertionError (self.rasterized is False and self.show_maps is True), "Check config again! Img can show only when rasterized flag is True"
         if self.show_maps:
             plt.figure('input_representation_{}'.format(idx))
             plt.imshow(img)
