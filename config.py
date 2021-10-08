@@ -12,36 +12,28 @@ class Config(object):
         self.future_seconds = 6
 
         # Image Processing
-        self.show_maps = True
-        self.save_maps = False
-        self.rasterized = True
-        self.raster_size = [224,224]
-        self.pixel_size = [0.5, 0.5]
-        self.ego_center = [0.25, 0.5]       # doesn't work
+        self.show_imgs = False
+        self.save_imgs = False
+        # self.raster_size = [224,224]        # doesn't work
+        # self.pixel_size = [0.5, 0.5]        # doesn't work
+        # self.ego_center = [0.25, 0.5]       # doesn't work
+        self.img_map_layers_list = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing', 'road_divider', 'lane_divider', 'traffic_light']
 
         # Map Processing
-        # self.map_layers_list = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
-        #             'walkway', 'stop_line', 'carpark_area', 
-        #             'road_divider', 'lane_divider', 'traffic_light']
-        # self.color_list = [(0, 0, 0), (0, 0, 0), (0, 0, 0),
-        #                     (0, 0, 0), (0, 0, 0), (0, 0, 0), 
-        #                     (0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0)]   
-        # self.color_list = [(255, 255, 255), (255, 255, 255), (255, 255, 255),
-        #                     (255, 255, 255), (255, 255, 255), (255, 255, 255), 
-        #                     (255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255)]    
-
-        self.map_layers_list = ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing',
-                    'road_divider', 'lane_divider', 'traffic_light']
-        self.color_list = [(255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255), (255, 255, 255),
-                 (255, 255, 255),(255, 255, 255),(255, 255, 255), ]
-
-        self.resolution = 0.1                       # meters/pixel
+        self.show_maps = False
+        self.save_maps = True
+        self.map_layers_list = ['lane_divider']   # choose from ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area', 'road_divider', 'lane_divider', 'traffic_light']
+        self.lane_type = 'incoming'               # 'incoming' or 'outgoing'
+        self.canvas_size = (200, 200)
+        self.fig_size= (8,4)
+        self.bbox_size_limit = 100                # [meter]
+        self.resolution = 0.1                     # [meters/pixel]
         self.meters_ahead = 40
         self.meters_behind = 10
         self.meters_left = 25
         self.meters_right = 25        
-        self.patch_angle = 0                       # orientation where North is up
-
+        self.patch_angle = 0                      # orientation where North is up
+        
         # Agent Processing
         self.num_max_agent = 10
 

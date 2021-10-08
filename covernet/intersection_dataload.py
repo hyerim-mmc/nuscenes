@@ -26,7 +26,7 @@ def has_duplicates2(seq):
         return seq
 
 def token_save(dataset):
-    with open('wanted_data_idx.pickle','rb') as fw:
+    with open('./covernet/wanted_data_idx.pickle','rb') as fw:
         idx_list = pickle.load(fw)
 
     token_list = []

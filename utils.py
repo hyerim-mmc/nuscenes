@@ -1,6 +1,7 @@
 # Code written by govvijaycal from Github
 import os
 import json
+from matplotlib import pyplot as plt
 import numpy as np
 from PIL import Image
 from nuscenes.eval.common.utils import quaternion_yaw
@@ -25,27 +26,35 @@ def data_filter(data):
 			
 	return data
 
-def save_map(self, dataset, type, input_repr):
-
+def save_imgs(self, dataset, type, input_repr):
 	print("starting to save maps")
 
 	for i, _ in enumerate(dataset): 
 		instance_token_img, sample_token_img = dataset[i].split('_')
 		
-		folder_path = os.path.join(self.dataroot, 'saved_map', type)
+		folder_path = os.path.join(self.dataroot, 'saved_img', type)
 		if not os.path.exists(folder_path):
 			os.makedirs(folder_path, exist_ok=True)
 
-		file_path = os.path.join(folder_path,"maps_{0}.jpg".format(i))
+		file_path = os.path.join(folder_path,"img_{0}.jpg".format(i))
 
 		instance_token_img, sample_token_img = dataset[i].split('_')
 		img = input_repr.make_input_representation(instance_token_img, sample_token_img)
 		im = Image.fromarray(img)
 		im.save(file_path)
 	
-		print("Map saving process : [{0}/{1}] completed".format(i, len(dataset)),end='\r')
-	
-	print("done saving maps")
+		print("Img saving process : [{0}/{1}] completed".format(i, len(dataset)),end='\r')
+	print("done saving imgs")
+
+
+def save_maps(self, type, map, idx):
+	folder_path = os.path.join(self.dataroot, 'saved_map', type)
+	if not os.path.exists(folder_path):
+		os.makedirs(folder_path, exist_ok=True)
+	file_path = os.path.join(folder_path,"maps_{0}.jpg".format(idx))
+
+	plt.savefig(file_path)	
+	print("done saving map_{}".format(idx))
 
 
 def get_pose_from_annot(annotation):

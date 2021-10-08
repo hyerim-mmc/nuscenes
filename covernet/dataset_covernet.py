@@ -58,7 +58,6 @@ class NuSceneDataset_CoverNet(Dataset):
         self.meters_behind = config['PREPROCESS']['meters_behind']
         self.meters_left = config['PREPROCESS']['meters_left']
         self.meters_right = config['PREPROCESS']['meters_right'] 
-        self.patch_angle = config['PREPROCESS']['patch_angle']
 
         self.past_seconds = config['HISTORY']['past_seconds']
         self.future_seconds = config['HISTORY']['future_seconds']
@@ -77,17 +76,17 @@ class NuSceneDataset_CoverNet(Dataset):
                                         agent=self.agent_layer, 
                                         combinator=Rasterizer())     
 
-        self.show_maps = config['PREPROCESS']['show_maps']
-        self.save_maps = config['PREPROCESS']['save_maps']
+        self.show_imgs = config['PREPROCESS']['show_imgs']
+        self.save_imgs = config['PREPROCESS']['save_imgs']
 
         self.num_max_agent = config['PREPROCESS']['num_max_agent']
         self.mask = config['PREPROCESS']['mask']
 
-        if self.save_maps:
+        if self.save_imgs:
             if self.train_mode:
-                utils.save_map(self.dataroot, self.train_set, self.set + 'train', self.input_repr)
+                utils.save_imgs(self, self.train_set, self.set + 'train', self.input_repr)
             else:
-                utils.save_map(self.dataroot, self.val_set, self.set + 'val', self.input_repr)
+                utils.save_imgs(self, self.val_set, self.set + 'val', self.input_repr)
         
   
 
@@ -157,7 +156,7 @@ class NuSceneDataset_CoverNet(Dataset):
 
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
-        if self.show_maps:
+        if self.show_imgs:
             plt.figure('input_representation')
             plt.imshow(img)
             plt.show()
@@ -180,8 +179,6 @@ class NuSceneDataset_CoverNet(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = NuSceneDataset_CoverNet(train_mode=True, config_file_name='covernet_config.json')
+    dataset = NuSceneDataset_CoverNet(train_mode=True, config_file_name='./covernet/covernet_config.json')
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
-    # print(dataset.__len__())
-    # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)

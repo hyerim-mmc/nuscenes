@@ -32,8 +32,8 @@ def run(config_file):
     traj_set_path = config['LEARNING']['trajectory_set_path']
     ###########################################################################
 
-    train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name='./covernet_config.json'), batch_size=batch_size, shuffle=True)
-    val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name='./covernet_config.json'), batch_size=batch_size, shuffle=True)
+    train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name=config_file), batch_size=batch_size, shuffle=True)
+    val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file), batch_size=batch_size, shuffle=True)
 
     backbone = ResNetBackbone('resnet50')
     model = CoverNet(backbone, num_modes)
@@ -101,5 +101,5 @@ def run(config_file):
                         torch.save(model.state_dict(), net_save_path)
 
 if __name__ == "__main__":
-    run(config_file='./covernet_config.json')
+    run(config_file='./covernet/covernet_config.json')
 
