@@ -5,7 +5,7 @@ This repository contains an implementation of [CoverNet](https://arxiv.org/pdf/1
 
 ## Setup
 1. Download Repository ```git clone https://github.com/hyerim-mmc/nuscenes.git```
-2. Download [Nuscenes Dataset](https://www.nuscenes.org/download)
+2. Download [Nuscenes Dataset_Full dataset(v1.0)](https://www.nuscenes.org/download) 
 
     - Dataset Architecture should be as follows
     ```
@@ -19,10 +19,13 @@ This repository contains an implementation of [CoverNet](https://arxiv.org/pdf/1
              |__v1.0-mini
              |__detection.json
     ```
-  
-3. Download [Nuscenes-devkit](https://github.com/nutonomy/nuscenes-devkit#getting-started-with-nuscenes)
-4. Download [Pytorch](https://pytorch.org/get-started/locally/)
-5. Download Tensorboard ```pip install tensorboard``` or ```conda install tensorboard```
+
+3. Download [Map expansion](https://www.nuscenes.org/download) 
+   
+   - Extract the contents (folders basemap, expansion and prediction) to your nuScenes maps folder. 
+4. Download [Nuscenes-devkit](https://github.com/nutonomy/nuscenes-devkit#getting-started-with-nuscenes)
+5. Download [Pytorch](https://pytorch.org/get-started/locally/)
+6. Download Tensorboard ```pip install tensorboard``` or ```conda install tensorboard```
 
 ## Run
 Please check DATASET_PATH in advance!
