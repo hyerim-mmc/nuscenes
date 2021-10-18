@@ -179,5 +179,9 @@ class NuSceneDataset_CoverNet(Dataset):
 
 if __name__ == "__main__":
     dataset = NuSceneDataset_CoverNet(train_mode=True, config_file_name='./covernet/covernet_config.json')
-    for i in range(dataset.__len__()):
-        dataset.__getitem__(i)
+    # for i in range(dataset.__len__()):
+    #     dataset.__getitem__(i)
+    d= dataset.__getitem__(0)
+    
+    img_tensor = torch.Tensor(d['img']).permute(2, 0, 1).unsqueeze(0).to('cpu')
+    print(img_tensor.shape)

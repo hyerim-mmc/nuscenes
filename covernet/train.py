@@ -38,7 +38,7 @@ def run(config_file):
     backbone = ResNetBackbone('resnet50')
     model = CoverNet(backbone, num_modes)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()   ## classification loss
     trajectories_set =torch.Tensor(pickle.load(open(traj_set_path, 'rb')))
     model = model.to(device)
 

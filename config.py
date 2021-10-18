@@ -3,13 +3,11 @@ class Config(object):
         self.set = 'mini'           # 'train' or 'mini'
         self.dataset_str = 'v1.0-mini'
         self.dataset_path = '/home/hyerim/data/sets/nuscenes'
-
         self.device = 'cpu'
-        self.train_mode = True
         
         # Agent history
-        self.past_seconds = 6                       
-        self.future_seconds = 6
+        self.past_seconds = 6/2                      
+        self.future_seconds = 6/2
 
         # Image Processing
         self.show_imgs = False
@@ -21,7 +19,7 @@ class Config(object):
 
         # Map Processing
         self.show_maps = False
-        self.save_maps = True
+        self.save_maps = False
         self.map_layers_list = ['lane_divider']   # choose from ['drivable_area', 'road_segment', 'road_block', 'lane', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area', 'road_divider', 'lane_divider', 'traffic_light']
         self.lane_type = 'incoming'               # 'incoming' or 'outgoing'
         self.canvas_size = (200, 200)

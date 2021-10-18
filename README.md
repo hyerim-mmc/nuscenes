@@ -32,7 +32,8 @@ Please check DATASET_PATH in advance!
 
 1. Dataset Processing
     - Write own parsing configuration ```config.py```
-    - Run ```python dataset.py```
+    - Run ```python dataset.py``` for check
+    - Use dataset for Dataloader
     
 2. CoverNet Implementation (NOT COMPLETED)
     - Write own parsing/learning configuration ```covernet/covernet_config.json```

@@ -318,5 +318,4 @@ if __name__ == "__main__":
     dataset = NuSceneDataset(train_mode=True)
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
-        print(i)
     # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)
