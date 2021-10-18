@@ -2,8 +2,8 @@ import os
 import pickle
 from nuscenes.eval.prediction.splits import get_prediction_challenge_split
 
-
 def intersection_data_save():
+    # custom dataset folder
     path = '/home/hyerim/data/sets/nuscenes/saved_map/minitrain_intersecion'
     map_list = os.listdir(path)
     idx_list = []
@@ -41,6 +41,8 @@ def token_save(dataset):
 
 if __name__ == "__main__":
     # intersection_data_save()
+
+    ## for TEST
     train_set = get_prediction_challenge_split("mini_train", dataroot="/home/hyerim/data/sets/nuscenes")
     token_list_unique = token_save(train_set)
     print(token_list_unique)

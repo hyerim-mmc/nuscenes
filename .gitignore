@@ -4,6 +4,4 @@ __pycache__
 nuscenes-devkit
 result
 trajectory-sets/*.pkl
-*.pkl
-*.pickle
 *.pth

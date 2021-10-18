@@ -5,7 +5,6 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import utils
 import torch
 import intersection_dataload
-import pickle
 import numpy as np
 
 from utils import Json_Parser
