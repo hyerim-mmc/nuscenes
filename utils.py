@@ -1,4 +1,3 @@
-# Code written by govvijaycal from Github
 import os
 import json
 from matplotlib import pyplot as plt
@@ -67,6 +66,39 @@ def get_pose(annotation_list):
     return np.array([get_pose_from_annot(ann) for ann in annotation_list])
 
 
+def get_pose2(annotation_list, max_size):
+	temp = []
+	num = max_size - len(annotation_list)
+
+	for idx in range(len(annotation_list)):
+		temp.append(get_pose_from_annot(annotation_list[idx]))
+
+	for i in range(num):
+		temp.append([0,0,0])
+
+	return np.array(temp)
+
+
+def check_shape(check_list, max_size, dim):
+	# input type is np.array
+
+	num = len(check_list) - max_size
+	check_shape = np.shape(check_list)
+
+	if num != 0:
+		for i in range(abs(num)):
+			if dim == 1:
+				check_list = np.append(check_list, np.array([0]))
+			elif dim == 2:
+				empty = np.zeros([1, 3])
+				check_list = np.append(check_list, empty, axis=0)
+			elif dim == 3:
+				empty = np.zeros([1, check_shape[1], check_shape[2]])
+				check_list = np.append(check_list, empty, axis=0)
+	
+	return check_list
+	
+
 def rotation_global_to_local(yaw):
     return np.array([[ np.cos(yaw), np.sin(yaw)], \
                 [-np.sin(yaw), np.cos(yaw)]])
@@ -106,3 +138,13 @@ def convert_global_to_local_forpose(global_pose_origin, global_pose):
     output = [local_xy[0], local_xy[1], local_yaw]
 
     return output
+
+if __name__ == "__main__":
+	x = [[14.390376776648509, -10.52232451628899, 1.8050195123977728], [-11.560309700592597, -0.24055067322350965, 0.016563174589137475], [-32.956026099823475, 8.602587500732682, 0.10983356983239645], [-1.702659006289423, 3.1352247620069846, 0.017453292519943986], [0.0, 0.0, 0.0], [-7.504870698154491, 8.325104672253829, 0.09510299092888275]]
+	print(np.shape(np.array(x)))
+	# output = check_shape(x,10,True)
+	em = np.array([[0,0,0]])
+	print(np.shape(em))
+	output = np.append(x, em, axis=0)
+	print(output)
+	print(np.shape(output))

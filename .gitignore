@@ -5,3 +5,4 @@ nuscenes-devkit
 result
 trajectory-sets/*.pkl
 *.pth
+parsingcheck_py

@@ -18,7 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 def run(config_file):
-    ########################### Load Config paramter ###########################
+    ###################################################### Load Config paramter ######################################################
     parser = Json_Parser(config_file)
     config = parser.load_parser()    
     device = torch.device(config['LEARNING']['device'] if torch.cuda.is_available() else 'cpu')
@@ -29,21 +29,21 @@ def run(config_file):
     val_batch_size = config['LEARNING']['val_batch_size']
     num_modes = config['LEARNING']['num_modes']
     print_size = config['LEARNING']['print_size']
+    resnet_path = config['LEARNING']['weight_path']
     traj_set_path = config['LEARNING']['trajectory_set_path']
-    ###########################################################################
+    #################################################################################################################################
 
     train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name=config_file), batch_size=batch_size, shuffle=True)
-    val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file), batch_size=batch_size, shuffle=True)
-
+    val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file), batch_size=val_batch_size, shuffle=True)
     backbone = ResNetBackbone('resnet50')
+    backbone.load_state_dict(torch.load(resnet_path))
     model = CoverNet(backbone, num_modes)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) 
-    criterion = nn.CrossEntropyLoss()   ## classification loss
+    criterion = nn.CrossEntropyLoss()           ## classification loss
     trajectories_set =torch.Tensor(pickle.load(open(traj_set_path, 'rb')))
     model = model.to(device)
 
     save_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
-
     writer = SummaryWriter('./result/tensorboard/' + save_name)
     net_save_path = './result/model/model_{}.pth'.format(save_name)
     writer.add_text('config', json.dumps(config))
@@ -54,7 +54,7 @@ def run(config_file):
         for data in train_dataset:
             # train_mode
             model.train()
-            img_tensor = torch.Tensor(data['img']).permute(2, 0, 1).unsqueeze(0).to(device)
+            img_tensor = torch.Tensor(data['img']).permute(2, 0, 1).to(device)
             agent_state_vector = torch.Tensor(data['ego_state'].tolist()).to(device)
             
             prediction = model(img_tensor, agent_state_vector)
@@ -77,7 +77,7 @@ def run(config_file):
                     model.eval()
                     k = 0
                     for val_data in val_dataset:
-                        img_tensor = torch.Tensor(val_data['img']).permute(2, 0, 1).unsqueeze(0).to(device)
+                        img_tensor = torch.Tensor(val_data['img']).permute(2, 0, 1).to(device)
                         agent_state_vector = torch.Tensor(val_data['ego_state'].tolist()).to(device)
                         
                         prediction = model(img_tensor, agent_state_vector)
@@ -101,5 +101,14 @@ def run(config_file):
                         torch.save(model.state_dict(), net_save_path)
 
 if __name__ == "__main__":
-    run(config_file='./covernet/covernet_config.json')
-
+    # run(config_file='./covernet/covernet_config.json')
+    config_file='./covernet/covernet_config.json'
+    parser = Json_Parser(config_file)
+    config = parser.load_parser()    
+    train_dataset = NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file)
+    print(train_dataset.__len__())
+    dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
+    for data in dataloader:
+        print(np.shape(data['img']))
+        print(data.keys())
+        break

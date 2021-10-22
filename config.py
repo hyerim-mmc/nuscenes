@@ -6,8 +6,8 @@ class Config(object):
         self.device = 'cpu'
         
         # Agent history
-        self.past_seconds = 6/2                      
-        self.future_seconds = 6/2
+        self.num_past_hist = 10                      
+        self.num_future_hist = 10          
 
         # Image Processing
         self.show_imgs = False
@@ -34,6 +34,3 @@ class Config(object):
         
         # Agent Processing
         self.num_max_agent = 10
-
-        # Mask (Use when you get data in specific region)
-        self.mask = [300,1250,500,1000]

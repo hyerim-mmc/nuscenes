@@ -3,7 +3,8 @@
         "set" : "mini",     
         "dataset_str" : "v1.0-mini",
         "dataset_path" : "/home/hyerim/data/sets/nuscenes",
-        "intersection_use" : true
+        "intersection_use" : false,
+        "img_preprocess" : true
     },
 
     "LEARNING" : {

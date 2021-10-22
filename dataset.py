@@ -1,5 +1,3 @@
-import os
-from nuscenes.map_expansion.map_api import NuScenesMap
 import torch
 import utils
 import numpy as np
@@ -8,6 +6,7 @@ from matplotlib import pyplot as plt
 from config import Config
 from torch.utils.data.dataset import Dataset
 from nuscenes.nuscenes import NuScenes
+from nuscenes.map_expansion.map_api import NuScenesMap
 from nuscenes.prediction.helper import PredictHelper
 from nuscenes.eval.prediction.splits import get_prediction_challenge_split
 from nuscenes.prediction.input_representation.agents import AgentBoxesWithFadedHistory
@@ -57,8 +56,8 @@ class NuSceneDataset(Dataset):
         self.meters_right = config.meters_right 
         self.patch_angle = config.patch_angle
 
-        self.past_seconds = config.past_seconds 
-        self.future_seconds = config.future_seconds 
+        self.num_past_hist = config.num_past_hist
+        self.num_future_hist = config.num_future_hist
 
         self.static_layer = StaticLayerRasterizer(helper=self.helper, 
                                             layer_names=self.img_layers_list, 
@@ -69,7 +68,7 @@ class NuSceneDataset(Dataset):
                                             meters_left=self.meters_left, 
                                             meters_right=self.meters_right)
         self.agent_layer = AgentBoxesWithFadedHistory(helper=self.helper, 
-                                            seconds_of_history=self.past_seconds, 
+                                            seconds_of_history=self.num_past_hist, 
                                             resolution=self.resolution, 
                                             meters_ahead=self.meters_ahead, 
                                             meters_behind=self.meters_behind,
@@ -134,7 +133,7 @@ class NuSceneDataset(Dataset):
                     agents.append(agents_in_egoframe[i])
         else:
             agents = agents_in_egoframe
-        num_agents = len(agents)                    # after filtering
+        num_agents = len(agents)                    # (after) filtering
 
         return num_agents, agents
 
@@ -166,11 +165,10 @@ class NuSceneDataset(Dataset):
 
         # GLOBAL history
         past = self.helper.get_past_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
-                                            seconds=self.past_seconds, in_agent_frame=False, just_xy=False)  
+                                            seconds=int(self.num_past_hist/2), in_agent_frame=False, just_xy=False)  
         future = self.helper.get_future_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
-                                            seconds=self.future_seconds, in_agent_frame=False, just_xy=False)
-        past_poses = utils.get_pose(past)
-        future_poses = utils.get_pose(future)
+                                            seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False)
+        ego_hist_num_mask = [len(past), len(future)]
 
         # Get sampling time between current and past/future sample (since it is not constant sampling)
         current_time = self.helper._timestamp_for_sample(ego_sample_token)                                  # Unit : microsec
@@ -200,7 +198,7 @@ class NuSceneDataset(Dataset):
             agent_annotation = self.helper.get_sample_annotation(instance_token_agent, sample_token_agent)
 
             agent_pose = utils.get_pose_from_annot(agent_annotation)
-            agent_local_pose  = np.array(utils.convert_global_to_local_forpose(ego_pose, agent_pose))
+            agent_local_pose  = utils.convert_global_to_local_forpose(ego_pose, agent_pose)
             agent_local_pose_list.append(agent_local_pose)
             agent_vel = self.helper.get_velocity_for_agent(instance_token_agent, sample_token_agent)
             agent_accel = self.helper.get_acceleration_for_agent(instance_token_agent, sample_token_agent)
@@ -213,73 +211,60 @@ class NuSceneDataset(Dataset):
 
             # Agent LOCAL history 
             past_global_poses = self.helper.get_past_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
-                                                seconds=self.past_seconds, in_agent_frame=False, just_xy=False)  
+                                                seconds=int(self.num_past_hist/2), in_agent_frame=False, just_xy=False)  
 
             future_global_poses = self.helper.get_future_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
-                                                seconds=self.future_seconds, in_agent_frame=False, just_xy=False) 
+                                                seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False) 
+            
+            print("idx : ", i)
+            if past_global_poses == [] or future_global_poses == []:
+                print("out")
+                continue 
 
+            print("num_agent :", num_agents)
+            print("11:", past_global_poses)
             past_global_poses = utils.get_pose(past_global_poses)
             future_global_poses = utils.get_pose(future_global_poses)
+            print("22:", past_global_poses)
 
-            agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)
-            agent_past_local_poses_list.append(agent_past_local_poses)
-            num_agent_past_hist.append(len(agent_past_local_poses))
+            agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)            
             agent_future_local_poses = utils.convert_global_to_local_forhistory(ego_pose, future_global_poses)
-            agent_future_local_poses_list.append(agent_future_local_poses)
+
+            num_agent_past_hist.append(len(agent_past_local_poses))
             num_agent_future_hist.append(len(agent_future_local_poses))
 
-        #################################### map processing ######################################
-        map_location_name = self.helper.get_map_name_from_sample_token(ego_sample_token)
-        nusc_map = NuScenesMap(map_name=map_location_name, dataroot=self.dataroot)
-        closest_lane = nusc_map.get_closest_lane(ego_pose[0], ego_pose[1], radius=2)
-        
-        assert (self.lane_type not in ['incoming, outgoing']), "Check lane_type config again! It should be 'incoming' or 'outgoint' but your type is {0}".format(self.lane_type)
-        first_lane = nusc_map._get_connected_lanes(closest_lane, self.lane_type)
-        
-        def plot_segment(lane_token):
-            global from_ego
-            global start_end_position
+            print("before : ",agent_past_local_poses)
+            agent_past_local_poses = utils.check_shape(agent_past_local_poses, self.num_past_hist, dim=2)
+            agent_future_local_poses = utils.check_shape(agent_future_local_poses, self.num_future_hist, dim=2)
+            print("after : ", agent_past_local_poses)
+            if i==0:
+                agent_past_local_poses_list = np.array(agent_past_local_poses)                
+                agent_future_local_poses_list = np.array(agent_future_local_poses)
 
-            outgoing_lane = nusc_map._get_connected_lanes(lane_token, 'outgoing')
-
-            if (lane_token==first_lane[0]):
-                from_ego = 0
-                start_end_position = np.array([])
             else:
-                from_ego += 1
+                agent_past_local_poses_list = np.concatenate([agent_past_local_poses_list, agent_past_local_poses], axis=0)
+                print("shape1: ", np.shape(agent_past_local_poses_list))
+                print("shape2: ", np.shape(agent_past_local_poses))          
+                agent_future_local_poses_list = np.concatenate([agent_future_local_poses_list, agent_future_local_poses], axis=0)          
+                print("shape3: ", np.shape(agent_future_local_poses_list))
+                print("shape4: ", np.shape(agent_future_local_poses)) 
+            agent_past_local_poses_np = agent_past_local_poses_list.reshape(-1, self.num_past_hist, 3)
+            agent_future_local_poses_np = agent_future_local_poses_list.reshape(-1, self.num_future_hist, 3)
 
-            for i in range(len(outgoing_lane)):
-                outgoing_lane_info = nusc_map.get_arcline_path(outgoing_lane[i])
-                x_after = outgoing_lane_info[0]['end_pose'][0]
-                y_after = outgoing_lane_info[0]['end_pose'][1]
-                x_before = outgoing_lane_info[0]['start_pose'][0]
-                y_before = outgoing_lane_info[0]['end_pose'][1]
-                start_end_position = np.append(start_end_position, [x_before, y_before, x_after, y_after], axis=0)
-                if from_ego > 100 or abs(x_after - ego_pose[0])>self.bbox_size  or abs(y_after - ego_pose[1])>self.bbox_size:
-                    return 
-                
-                plt.scatter(outgoing_lane_info[0]['start_pose'][0]-ego_pose[0]+self.bbox_size, outgoing_lane_info[0]['start_pose'][1]-ego_pose[1]+self.bbox_size, c='b', s=15)
-                plt.scatter(x_after-ego_pose[0]+self.bbox_size, y_after-ego_pose[1]+self.bbox_size, c='b' , s=15)
-                plot_segment(outgoing_lane[i])
-        
-        patch_box = (ego_pose[0], ego_pose[1], self.bbox_size*2, self.bbox_size*2)
-        fig, ax = nusc_map.render_map_mask(patch_box, self.patch_angle, self.map_layers_list, self.canvas_size, figsize=self.fig_size, n_row=1)
-                
-        for i in range(len(first_lane)):
-            plot_segment(first_lane[i])
 
-        if self.show_maps:
-            plt.show()
-            plt.close(fig)
-        if self.save_maps:
-            if self.train_mode:
-                type_str = self.set + 'train'
-            else:
-                type_str = self.set + 'val'
+        # unify shape of variant data
+        past_poses_m = utils.get_pose2(past, self.num_past_hist)
+        future_poses_m = utils.get_pose2(future, self.num_future_hist)
+        past_cur_time_diff_m = utils.check_shape(past_cur_time_diff, self.num_past_hist, dim=1)
+        future_cur_time_diff_m = utils.check_shape(future_cur_time_diff, self.num_future_hist, dim=1)
 
-            utils.save_maps(self, type_str, fig, idx)
-        start_end_position_output = np.resize(start_end_position, (-1,4))
-        
+        agent_local_pose_list_m = utils.check_shape(agent_local_pose_list, self.num_max_agent, dim=2)
+        agent_states_list_m = utils.check_shape(agent_states_list, self.num_max_agent, dim=2)
+        # agent_past_local_poses_list_m = utils.check_shape(agent_past_local_poses_np, self.num_max_agent, dim=3)        
+        # agent_future_local_poses_list_m = utils.check_shape(agent_future_local_poses_np, self.num_max_agent, dim=3)
+        num_agent_past_hist_m = utils.check_shape(num_agent_past_hist, self.num_max_agent, dim=1)
+        num_agent_future_hist_m = utils.check_shape(num_agent_future_hist, self.num_max_agent, dim=1)
+
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
         if self.show_imgs:
@@ -287,25 +272,80 @@ class NuSceneDataset(Dataset):
             plt.imshow(img)
             plt.show()
 
-        return {'img'                  : img,                                                       # Type : np.array
-                'segment'              : start_end_position_output,                                 # Type : np.array([start_x, start_y, end_x, end_y])
+
+        # #################################### Map processing ######################################
+        # map_location_name = self.helper.get_map_name_from_sample_token(ego_sample_token)
+        # nusc_map = NuScenesMap(map_name=map_location_name, dataroot=self.dataroot)
+        # closest_lane = nusc_map.get_closest_lane(ego_pose[0], ego_pose[1], radius=2)
+        
+        # assert (self.lane_type not in ['incoming, outgoing']), "Check lane_type config again! It should be 'incoming' or 'outgoint' but your type is {0}".format(self.lane_type)
+        # first_lane = nusc_map._get_connected_lanes(closest_lane, self.lane_type)
+        
+        # def plot_segment(lane_token):
+        #     global from_ego
+        #     global start_end_position
+
+        #     outgoing_lane = nusc_map._get_connected_lanes(lane_token, 'outgoing')
+
+        #     if (lane_token==first_lane[0]):
+        #         from_ego = 0
+        #         start_end_position = np.array([])
+        #     else:
+        #         from_ego += 1
+
+        #     for i in range(len(outgoing_lane)):
+        #         outgoing_lane_info = nusc_map.get_arcline_path(outgoing_lane[i])
+        #         x_(after) = outgoing_lane_info[0]['end_pose'][0]
+        #         y_(after) = outgoing_lane_info[0]['end_pose'][1]
+        #         x_before = outgoing_lane_info[0]['start_pose'][0]
+        #         y_before = outgoing_lane_info[0]['end_pose'][1]
+        #         start_end_position = np.append(start_end_position, [x_before, y_before, x_(after), y_(after)], axis=0)
+        #         if from_ego > 100 or abs(x_(after) - ego_pose[0])>self.bbox_size  or abs(y_(after) - ego_pose[1])>self.bbox_size:
+        #             return 
+                
+        #         plt.scatter(outgoing_lane_info[0]['start_pose'][0]-ego_pose[0]+self.bbox_size, outgoing_lane_info[0]['start_pose'][1]-ego_pose[1]+self.bbox_size, c='b', s=15)
+        #         plt.scatter(x_(after)-ego_pose[0]+self.bbox_size, y_(after)-ego_pose[1]+self.bbox_size, c='b' , s=15)
+        #         plot_segment(outgoing_lane[i])
+        
+        # patch_box = (ego_pose[0], ego_pose[1], self.bbox_size*2, self.bbox_size*2)
+        # fig, ax = nusc_map.render_map_mask(patch_box, self.patch_angle, self.map_layers_list, self.canvas_size, figsize=self.fig_size, n_row=1)
+                
+        # for i in range(len(first_lane)):
+        #     plot_segment(first_lane[i])
+
+        # if self.show_maps:
+        #     plt.show()
+        #     plt.close(fig)
+        # if self.save_maps:
+        #     if self.train_mode:
+        #         type_str = self.set + 'train'
+        #     else:
+        #         type_str = self.set + 'val'
+
+        #     utils.save_maps(self, type_str, fig, idx)
+        # start_end_position_output = np.resize(start_end_position, (-1,4))      
+
+        return {
+                'img'                  : img,                                                         # Type : np.array
+                # 'segment'              : start_end_position_output,                                 # Type : np.array([start_x, start_y, end_x, end_y for each segment])
                 # ego vehicle                                                   
-                'instance_token'       : ego_instance_token,                                        # Type : str
-                'sample_token'         : ego_sample_token,                                          # Type : str
-                'ego_cur_pos'          : ego_pose,                                                  # Type : np.array([global_x,globa_y,global_yaw])
-                'ego_state'            : ego_states,                                                # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)          | Unit : [m/s, m/s^2, rad/sec]    
-                'past_global_ego_pos'  : past_poses,                                                # Type : np.array([global_x, global_y, global_yaw])
-                'future_global_ego_pos': future_poses,                                              # Type : np.array([global_x, global_y, global_yaw])
-                'past_cur_diff_ego'    : past_cur_time_diff,                                        # Difference between current and past sampling time
-                'future_cur_diff_ego'  : future_cur_time_diff,                                      # Difference between current and future sampling time
+                'instance_token'       : ego_instance_token,                                          # Type : str
+                'sample_token'         : ego_sample_token,                                            # Type : str
+                'ego_cur_pos'          : ego_pose,                                                    # Type : np.array([global_x,globa_y,global_yaw])                        | Shape : (3, )
+                'ego_state'            : ego_states,                                                  # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)          | Shape : (3, )                        | Unit : [m/s, m/s^2, rad/sec]    
+                'ego_hist_num_mask'    : ego_hist_num_mask,                                           # Type : list, [self.num_past_hist, self.num_future_hist]  ... for masking history array 
+                'past_global_ego_pos'  : past_poses_m,                                                # Type : np.array([global_x, global_y, global_yaw])                     | Shape : (self.num_past_hist, 3)
+                'future_global_ego_pos': future_poses_m,                                              # Type : np.array([global_x, global_y, global_yaw])                     | Shape : (self.num_future_hist, 3)
+                'past_cur_diff_ego'    : past_cur_time_diff_m,                                        # Difference between current and past sampling time                     | Shape : (self.num_past_hist, )  
+                'future_cur_diff_ego'  : future_cur_time_diff_m,                                      # Difference between current and future sampling time                   | Shape : (self.num_future_hist, )
                 # agents nearby ego (all local data in ego coordinate)
                 'num_agents'           : num_agents,
-                'agent_cur_pose'       : np.array(agent_local_pose_list),                           # Type : np.row_stack([local_x, local_y, local_yaw])
-                'agent_state'          : np.array(agent_states_list),                               # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)    | Unit : [m/s, m/s^2, rad/sec]    
-                'agent_past_pose'      : np.array(agent_past_local_poses_list, dtype=object),       # Type : np.row_stack([local_x, local_y, local_yaw])                
-                'agent_future_pose'    : np.array(agent_future_local_poses_list, dtype=object),     # Type : np.row_stack([local_x, local_y, local_yaw])
-                'num_agent_past_hist'  : np.array(num_agent_past_hist),                             # Type : np.array([len_past_history for each agent])  
-                'num_agent_future_hist': np.array(num_agent_future_hist)                            # Type : np.array([len_future_history for each agent])
+                'agent_cur_pose'       : np.array(agent_local_pose_list_m),                           # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, 3)
+                'agent_state'          : np.array(agent_states_list_m),                               # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)    | Shape : (self.num_max_agent, 3)       | Unit : [m/s, m/s^2, rad/sec]     
+                # 'agent_past_pose'      : np.array(agent_past_local_poses_list_m),                     # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, self.num_past_hist, 3)
+                # 'agent_future_pose'    : np.array(agent_future_local_poses_list_m),                   # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, self.num_future_hist, 3)
+                'num_agent_past_hist'  : np.array(num_agent_past_hist_m),                             # Type : np.array([len_past_history for each agent])                    | Shape : (self.num_past_hist, )    
+                'num_agent_future_hist': np.array(num_agent_future_hist_m)                            # Type : np.array([len_future_history for each agent])                  | Shape : (self.num_future_hist, )  
                 }
 
         # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
@@ -313,9 +353,18 @@ class NuSceneDataset(Dataset):
 
     
 
-
 if __name__ == "__main__":
     dataset = NuSceneDataset(train_mode=True)
     for i in range(dataset.__len__()):
         dataset.__getitem__(i)
-    # train_loader = DataLoader(train_set, batch_size=8, shuffle = True, pin_memory = True, num_workers = 4)
+
+    # from torch.utils.data.dataloader import DataLoader
+    # from dataset import NuSceneDataset
+
+    # dataset = NuSceneDataset(train_mode=False)
+
+    # print(dataset.__len__())
+    # dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    
+    # for d in dataloader:
+    #     print("Cc")
