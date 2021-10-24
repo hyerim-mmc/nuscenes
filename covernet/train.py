@@ -1,3 +1,4 @@
+## Execute tensorboard => tensorboard --logdir=./result/tensorboard
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
@@ -5,110 +6,117 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import json
 import numpy as np
 import torch
-import pickle
 
 from torch import nn
 from datetime import datetime
 from utils import Json_Parser
-from network import CoverNet, mean_pointwise_l2_distance
+from network import CoverNet
 from torch.utils.data.dataloader import DataLoader
 from dataset_covernet import NuSceneDataset_CoverNet
 from nuscenes.prediction.models.backbone import ResNetBackbone
 from torch.utils.tensorboard import SummaryWriter
 
+class CoverNet_train:
+    def __init__(self, config_file, verbose):
+        self.parser = Json_Parser(config_file)
+        self.config = self.parser.load_parser()    
+        self.device = torch.device(self.config['LEARNING']['device'] if torch.cuda.is_available() else 'cpu')
+        self.lr = self.config['LEARNING']['lr']
+        self.momentum = self.config['LEARNING']['momentum']
+        self.n_epochs = self.config['LEARNING']['n_epochs']
+        self.batch_size = self.config['LEARNING']['batch_size']
+        self.val_batch_size = self.config['LEARNING']['val_batch_size']
+        self.num_val_data = self.config['LEARNING']['num_val_data']
+        self.num_modes = self.config['LEARNING']['num_modes']
+        self.print_size = self.config['LEARNING']['print_size']
 
-def run(config_file):
-    ###################################################### Load Config paramter ######################################################
-    parser = Json_Parser(config_file)
-    config = parser.load_parser()    
-    device = torch.device(config['LEARNING']['device'] if torch.cuda.is_available() else 'cpu')
-    lr = config['LEARNING']['lr']
-    momentum = config['LEARNING']['momentum']
-    n_epochs = config['LEARNING']['n_epochs']
-    batch_size = config['LEARNING']['batch_size']
-    val_batch_size = config['LEARNING']['val_batch_size']
-    num_modes = config['LEARNING']['num_modes']
-    print_size = config['LEARNING']['print_size']
-    resnet_path = config['LEARNING']['weight_path']
-    traj_set_path = config['LEARNING']['trajectory_set_path']
-    #################################################################################################################################
+        self.train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name=config_file, verbose=verbose), batch_size=self.batch_size, shuffle=True)
+        self.val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file, verbose=verbose), batch_size=self.val_batch_size, shuffle=True)
 
-    train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name=config_file), batch_size=batch_size, shuffle=True)
-    val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file), batch_size=val_batch_size, shuffle=True)
-    backbone = ResNetBackbone('resnet50')
-    backbone.load_state_dict(torch.load(resnet_path))
-    model = CoverNet(backbone, num_modes)
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum) 
-    criterion = nn.CrossEntropyLoss()           ## classification loss
-    trajectories_set =torch.Tensor(pickle.load(open(traj_set_path, 'rb')))
-    model = model.to(device)
+        self.backbone = ResNetBackbone('resnet50')
+        # self.resnet_path = self.config['LEARNING']['weight_path']
+        # self.backbone.load_state_dict(torch.load(self.resnet_path))
+        self.model = CoverNet(self.backbone, self.num_modes)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, momentum=self.momentum) 
+        self.criterion = nn.CrossEntropyLoss()           ## classification loss
+        self.model = self.model.to(self.device)
 
-    save_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
-    writer = SummaryWriter('./result/tensorboard/' + save_name)
-    net_save_path = './result/model/model_{}.pth'.format(save_name)
-    writer.add_text('config', json.dumps(config))
+        self.save_name = datetime.now().strftime("%Y%m%d-%H_%M_%S")
+        self.writer = SummaryWriter('./result/tensorboard/' + self.save_name)
+        self.net_save_path = os.path.join(self.config['LEARNING']['model_save_path'], self.save_name)
+        if not os.path.exists(self.net_save_path):
+            os.mkdir(self.net_save_path)
+        self.writer.add_text('Config', json.dumps(self.config))
+        dataset_size = {'train_size' : self.train_dataset.__len__(), 'val_size' : self.val_dataset.__len__()}
+        self.writer.add_text('Dataset_size', json.dumps(dataset_size))
 
-    step = 1
-    for epoch in range(n_epochs + 1):
-        Loss, Val_Loss = [], []
-        for data in train_dataset:
-            # train_mode
-            model.train()
-            img_tensor = torch.Tensor(data['img']).permute(2, 0, 1).to(device)
-            agent_state_vector = torch.Tensor(data['ego_state'].tolist()).to(device)
-            
-            prediction = model(img_tensor, agent_state_vector)
-            gt = torch.Tensor(data['future_global_ego_pos'][:,:2].tolist())
-            label = mean_pointwise_l2_distance(trajectories_set, gt)
 
-            optimizer.zero_grad()
-            # loss = calc_loss(prediction, label)
-            loss = criterion(prediction,label)
-            loss.backward()
-            optimizer.step()
-            step += 1
+                
+    def run(self):
+        print("CoverNet learning starts!")
+        step = 1
+        for epoch in range(self.n_epochs + 1):
+            Loss, Val_Loss = [], []
 
-            with torch.no_grad():
-                Loss.append(loss.cpu().detach().numpy())
+            for data in self.train_dataset:
+                # train_mode
+                self.model.train()
 
-            if step % print_size == 0:
-                with torch.no_grad:
-                    # eval_mode
-                    model.eval()
-                    k = 0
-                    for val_data in val_dataset:
-                        img_tensor = torch.Tensor(val_data['img']).permute(2, 0, 1).to(device)
-                        agent_state_vector = torch.Tensor(val_data['ego_state'].tolist()).to(device)
-                        
-                        prediction = model(img_tensor, agent_state_vector)
-                        gt = torch.Tensor(data['future_global_ego_pos'][:,:2].tolist())
-                        label = mean_pointwise_l2_distance(trajectories_set, gt)
+                img_tensor = data['img'].to(self.device)
+                agent_state_tensor = torch.Tensor(data['ego_state'].tolist()).to(self.device)
+                agent_state_tensor = torch.squeeze(agent_state_tensor, 1)
 
-                        val_loss = criterion(prediction,label)
-                        Val_Loss.append(val_loss.detach().cpu().numpy())
-                        k += 1
-                        if(k == 10):
-                            break
-                        
-                        loss = np.array(Loss).mean()
-                        val_loss = np.array(Val_Loss).mean()
+                prediction = self.model(img_tensor, agent_state_tensor)
+                label = data['label']
 
-                        writer.add_scalar('Loss', loss, epoch)
-                        writer.add_scalar('Val Loss', val_loss, epoch)
+                self.optimizer.zero_grad()
+                # loss = calc_loss(prediction, label)
+                loss = self.criterion(prediction,label)
+                loss.backward()
+                self.optimizer.step()
+                step += 1
 
-                        print("Epoch: {}/{} | Step: {} | Loss: {:.5f} | Val_Loss: {:.5f}".format(
-                                epoch + 1, n_epochs, step, loss, val_loss))
-                        torch.save(model.state_dict(), net_save_path)
+                with torch.no_grad():
+                    Loss.append(loss.cpu().detach().numpy())
+
+                if step % self.print_size == 0:
+                    with torch.no_grad():
+                        # eval_mode
+                        self.model.eval()
+
+                        k = 0
+                        for val_data in self.val_dataset:
+                            img_tensor = val_data['img'].to(self.device)
+                            agent_state_tensor = torch.Tensor(val_data['ego_state'].tolist()).to(self.device)
+                            agent_state_tensor = torch.squeeze(agent_state_tensor, 1)
+
+                            prediction = self.model(img_tensor, agent_state_tensor)
+                            label = val_data['label']
+
+                            val_loss = self.criterion(prediction,label)
+                            Val_Loss.append(val_loss.detach().cpu().numpy())
+
+                            k += 1
+                            if(k == self.num_val_data):
+                                break
+                            
+                    loss = np.array(Loss).mean()
+                    val_loss = np.array(Val_Loss).mean()
+
+                    self.writer.add_scalar('Loss', loss, epoch * len(self.train_dataset) + step)
+                    self.writer.add_scalar('Val Loss', val_loss, epoch * len(self.train_dataset) + step)
+
+                    print("Epoch: {}/{} | Step: {} | Loss: {:.5f} | Val_Loss: {:.5f}".format(
+                            epoch + 1, self.n_epochs, step, loss, val_loss))                    
+                    Loss, Val_Loss = [], []
+        
+            save_path = os.path.join(self.net_save_path, 'epoch_{0}.pth'.format(epoch + 1))
+            torch.save(self.model.state_dict(), save_path)
+
+        save_path = os.path.join(self.net_save_path, 'CoverNet.pth')
+        torch.save(self.model.state_dict(), save_path)
+
 
 if __name__ == "__main__":
-    # run(config_file='./covernet/covernet_config.json')
-    config_file='./covernet/covernet_config.json'
-    parser = Json_Parser(config_file)
-    config = parser.load_parser()    
-    train_dataset = NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file)
-    print(train_dataset.__len__())
-    dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
-    for data in dataloader:
-        print(np.shape(data['img']))
-        print(data.keys())
-        break
+    covernet_train = CoverNet_train(config_file='./covernet/covernet_config.json', verbose=False)
+    covernet_train.run()

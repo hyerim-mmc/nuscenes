@@ -38,11 +38,3 @@ def token_save(dataset):
 
     return token_list_unique
 
-
-if __name__ == "__main__":
-    # intersection_data_save()
-
-    ## for TEST
-    train_set = get_prediction_challenge_split("mini_train", dataroot="/home/hyerim/data/sets/nuscenes")
-    token_list_unique = token_save(train_set)
-    print(token_list_unique)

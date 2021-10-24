@@ -133,6 +133,7 @@ class NuSceneDataset_Mini(Dataset):
         future = self.helper.get_future_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
                                             seconds=self.num_future_hist, in_agent_frame=False, just_xy=False)
         future_poses_m = utils.get_pose2(future, self.num_future_hist)
+        num_future_mask = len(future)
 
 
         #################################### Image processing ####################################
@@ -144,27 +145,11 @@ class NuSceneDataset_Mini(Dataset):
 
 
         return {'img'                  : img,                          # Type : np.array
-                'instance_token'       : ego_instance_token,           # Type : str
-                'sample_token'         : ego_sample_token,             # Type : str
                 'ego_state'            : ego_states,                   # Type : np.array([[vel,accel,yaw_rate]]) --> local(ego's coord)   |   Unit : [m/s, m/s^2, rad/sec]    
-                'future_global_ego_pos': future_poses_m,                 # Type : np.array([global_x, global_y, global_yaw])
+                'num_future_mask'      : num_future_mask,              # Type : int .. indicate the number of future history for masking 'future_global_ego_pos'
+                'future_global_ego_pos': future_poses_m,               # Type : np.array([global_x, global_y, global_yaw])
                 }
 
         # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
         # History List of records.  The rows decrease with time, i.e the last row occurs the farthest in the past.
 
-    
-
-if __name__ == "__main__":
-    from torch.utils.data.dataloader import DataLoader
-
-    dataset = NuSceneDataset_Mini(train_mode=True, config_file_name='./dataset_mini/mini_config.json')
-    # for i in range(dataset.__len__()):
-    #     data = dataset.__getitem__(i)
-    #     print(np.shape(data['img']))
-
-    # print(dataset.__len__())
-    # dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
-    
-    # for d in dataloader:
-    #     print("Cc")

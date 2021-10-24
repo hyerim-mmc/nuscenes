@@ -14,13 +14,12 @@ from nuscenes.prediction.input_representation.agents import AgentBoxesWithFadedH
 from nuscenes.prediction.input_representation.static_layers import StaticLayerRasterizer
 from nuscenes.prediction.input_representation.interface import InputRepresentation
 from nuscenes.prediction.input_representation.combinators import Rasterizer
-from typing import Optional, List, Dict, Tuple
 
 
 
 
 class NuSceneDataset(Dataset):
-    def __init__(self, train_mode: bool):
+    def __init__(self, train_mode):
         super().__init__()
         config = Config()
 
@@ -99,7 +98,7 @@ class NuSceneDataset(Dataset):
             return len(self.val_set)
 
 
-    def select_agents(self, ego_sample_token : str, ego_pose : np.ndarray):
+    def select_agents(self, ego_sample_token, ego_pose):
         sample = self.helper.get_annotations_for_sample(ego_sample_token)
         mask = [ego_pose[0] - self.meters_left, ego_pose[1] + self.meters_ahead, ego_pose[0] + self.meters_right, ego_pose[1] - self.meters_behind] # [top_left_x, top_left_y, bottom_right_x, bottom_right_y]
 
@@ -145,7 +144,7 @@ class NuSceneDataset(Dataset):
             self.dataset = self.train_set
         else:
             self.dataset = self.val_set
-        print("3333333333333333333333333333333333333333333: ", idx)
+
         #################################### Ego states ####################################
         ego_instance_token, ego_sample_token = self.dataset[idx].split("_")
         ego_annotation = self.helper.get_sample_annotation(ego_instance_token, ego_sample_token)
@@ -158,6 +157,7 @@ class NuSceneDataset(Dataset):
         # Filter unresonable data (make nan to zero)
         [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])        
         ego_states = np.array([ego_vel, ego_accel, ego_yawrate])
+
 
         # GLOBAL history
         past = self.helper.get_past_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
@@ -177,12 +177,6 @@ class NuSceneDataset(Dataset):
         agent_future_local_poses_list = []
         num_agent_past_hist = []
         num_agent_future_hist = []
-        # agent_local_pose_list = np.zeros((self.num_max_agent, 3))
-        # agent_states_list = np.zeros((self.num_max_agent, 3))
-        # agent_past_local_poses_list = np.zeros((self.num_max_agent, self.num_past_hist, 3))
-        # agent_future_local_poses_list = np.zeros((self.num_max_agent, self.num_future_hist, 3))
-        # num_agent_past_hist = np.zeros((self.num_max_agent, self.num_past_hist), dtype=np.int)
-        # num_agent_future_hist = np.zeros((self.num_max_agent, self.num_future_hist), dtype=np.int)
 
         for i in range(num_agents):
             assert num_agents == len(agents_list), "num_agents != len(agents_list)"
@@ -193,9 +187,8 @@ class NuSceneDataset(Dataset):
             agent_annotation = self.helper.get_sample_annotation(instance_token_agent, sample_token_agent)
 
             agent_pose = utils.get_pose_from_annot(agent_annotation)
-            agent_local_pose = utils.convert_global_to_local_forpose(ego_pose, agent_pose)
+            agent_local_pose  = utils.convert_global_to_local_forpose(ego_pose, agent_pose)
             agent_local_pose_list.append(agent_local_pose)
-            # agent_local_pose_list[:len(agent_local_pose), ]
             agent_vel = self.helper.get_velocity_for_agent(instance_token_agent, sample_token_agent)
             agent_accel = self.helper.get_acceleration_for_agent(instance_token_agent, sample_token_agent)
             agent_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
@@ -212,19 +205,17 @@ class NuSceneDataset(Dataset):
             future_global_poses = self.helper.get_future_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False) 
             
-
             print("idx : ", i)
-            # if past_global_poses == [] or future_global_poses == []:
-            #     print("out")
-            #     num_agents -= 1
-            #     continue
-            # else:
+            if past_global_poses == [] or future_global_poses == []:
+                print("out")
+                continue 
+
             print("num_agent :", num_agents)
             print("11:", past_global_poses)
             past_global_poses = utils.get_pose(past_global_poses)
             future_global_poses = utils.get_pose(future_global_poses)
             print("22:", past_global_poses)
-            print("22 shape:", type(past_global_poses), np.shape(past_global_poses))
+
             agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)            
             agent_future_local_poses = utils.convert_global_to_local_forhistory(ego_pose, future_global_poses)
 
@@ -246,8 +237,8 @@ class NuSceneDataset(Dataset):
                 agent_future_local_poses_list = np.concatenate([agent_future_local_poses_list, agent_future_local_poses], axis=0)          
                 print("shape3: ", np.shape(agent_future_local_poses_list))
                 print("shape4: ", np.shape(agent_future_local_poses)) 
-            # agent_past_local_poses_np = agent_past_local_poses_list.reshape(-1, self.num_past_hist, 3)
-            # agent_future_local_poses_np = agent_future_local_poses_list.reshape(-1, self.num_future_hist, 3)
+            agent_past_local_poses_np = agent_past_local_poses_list.reshape(-1, self.num_past_hist, 3)
+            agent_future_local_poses_np = agent_future_local_poses_list.reshape(-1, self.num_future_hist, 3)
 
 
         # unify shape of variant data

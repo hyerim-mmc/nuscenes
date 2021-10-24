@@ -30,12 +30,14 @@ This repository contains an implementation of [CoverNet](https://arxiv.org/pdf/1
 ## Run
 Please check DATASET_PATH in advance!
 
-1. Dataset Processing
+1. Dataset Processing (STILL MAINTAINING)
     - Write own parsing configuration ```config.py```
     - Run ```python dataset.py``` for check
     - Use dataset for Dataloader
     
 2. CoverNet Implementation (NOT COMPLETED)
+    - Download the [trajectory sets](https://www.nuscenes.org/public/nuscenes-prediction-challenge-trajectory-sets.zip)
     - Write own parsing/learning configuration ```covernet/covernet_config.json```
     - Run ```python covernet/train.py```
     - Results will be saved in ```covernet/result``` folder
+    - Check Tensorboard results using ```tensorboard --logdir=./result/tensorboard``` and click the website

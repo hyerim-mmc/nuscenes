@@ -6,7 +6,7 @@ from PIL import Image
 from nuscenes.eval.common.utils import quaternion_yaw
 from nuscenes.prediction.input_representation.interface import Combinator
 from pyquaternion.quaternion import Quaternion
-
+from typing import List
 
 class Json_Parser:
     def __init__(self, file_name):
@@ -56,17 +56,17 @@ def save_maps(self, type, map, idx):
 	print("done saving map_{}".format(idx))
 
 
-def get_pose_from_annot(annotation):
+def get_pose_from_annot(annotation) -> list:
     x, y, _ = annotation['translation']
     yaw = quaternion_yaw(Quaternion(annotation['rotation']))
     
     return [x, y, yaw]
 
-def get_pose(annotation_list):
+def get_pose(annotation_list) -> np.ndarray:
     return np.array([get_pose_from_annot(ann) for ann in annotation_list])
 
 
-def get_pose2(annotation_list, max_size):
+def get_pose2(annotation_list, max_size) -> np.ndarray:
 	temp = []
 	num = max_size - len(annotation_list)
 
@@ -79,7 +79,7 @@ def get_pose2(annotation_list, max_size):
 	return np.array(temp)
 
 
-def check_shape(check_list, max_size, dim):
+def check_shape(check_list : np.ndarray, max_size : int, dim : int) -> np.ndarray:
 	# input type is np.array
 
 	num = len(check_list) - max_size
@@ -99,7 +99,7 @@ def check_shape(check_list, max_size, dim):
 	return check_list
 	
 
-def rotation_global_to_local(yaw):
+def rotation_global_to_local(yaw) -> np.ndarray:
     return np.array([[ np.cos(yaw), np.sin(yaw)], \
                 [-np.sin(yaw), np.cos(yaw)]])
 
@@ -116,7 +116,7 @@ def pose_diff_norm(pose_diff):
 
 
 
-def convert_global_to_local_forhistory(global_pose_origin, global_poses):
+def convert_global_to_local_forhistory(global_pose_origin, global_poses) -> np.ndarray:
 	R_global_to_local = rotation_global_to_local(global_pose_origin[2])
 	t_global_to_local = - R_global_to_local @ global_pose_origin[:2]
 
@@ -129,7 +129,7 @@ def convert_global_to_local_forhistory(global_pose_origin, global_poses):
 	return np.column_stack((local_xy, local_yaw))
 
 
-def convert_global_to_local_forpose(global_pose_origin, global_pose):
+def convert_global_to_local_forpose(global_pose_origin, global_pose) -> np.ndarray:
     R_global_to_local = rotation_global_to_local(global_pose_origin[2])
     t_global_to_local = - R_global_to_local @ global_pose_origin[:2]
 
@@ -137,7 +137,7 @@ def convert_global_to_local_forpose(global_pose_origin, global_pose):
     local_yaw = angle_mod_2pi(global_pose[2] - global_pose_origin[2])
     output = [local_xy[0], local_xy[1], local_yaw]
 
-    return output
+    return np.array(output)
 
 if __name__ == "__main__":
 	x = [[14.390376776648509, -10.52232451628899, 1.8050195123977728], [-11.560309700592597, -0.24055067322350965, 0.016563174589137475], [-32.956026099823475, 8.602587500732682, 0.10983356983239645], [-1.702659006289423, 3.1352247620069846, 0.017453292519943986], [0.0, 0.0, 0.0], [-7.504870698154491, 8.325104672253829, 0.09510299092888275]]

@@ -35,6 +35,5 @@
         "meters_left" : 25,
         "meters_right" : 25,        
         "num_max_agent" : 10,
-        "mask" : [300,1250,500,1000]
     }
 }
