@@ -1,6 +1,8 @@
 ## Execute tensorboard => tensorboard --logdir=./result/tensorboard
 import os
 import sys
+
+from torch.utils import data
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import json
@@ -47,9 +49,10 @@ class CoverNet_train:
         if not os.path.exists(self.net_save_path):
             os.mkdir(self.net_save_path)
         self.writer.add_text('Config', json.dumps(self.config))
-        dataset_size = {'train_size' : self.train_dataset.__len__(), 'val_size' : self.val_dataset.__len__()}
-        self.writer.add_text('Dataset_size', json.dumps(dataset_size))
 
+        dataset_info = {'train_size' : self.train_dataset.__len__(), 'val_size' : self.val_dataset.__len__(), 
+                        'train_batch_size' : self.batch_size, 'val_batch_size' : self.val_batch_size}
+        self.writer.add_text('Dataset_size', json.dumps(dataset_info))
 
                 
     def run(self):
@@ -70,12 +73,17 @@ class CoverNet_train:
                 label = data['label']
 
                 self.optimizer.zero_grad()
-                # loss = calc_loss(prediction, label)
                 loss = self.criterion(prediction,label)
+
+                # print("prediction size : ",prediction.size())
+                # print("label size : ",label.size())
+                # print("label type : ",type(label))
+                # gt_loss = self.criterion(label,torch.LongTensor(label))
+                # print(gt_loss)
                 loss.backward()
                 self.optimizer.step()
+                
                 step += 1
-
                 with torch.no_grad():
                     Loss.append(loss.cpu().detach().numpy())
 
@@ -103,8 +111,8 @@ class CoverNet_train:
                     loss = np.array(Loss).mean()
                     val_loss = np.array(Val_Loss).mean()
 
-                    self.writer.add_scalar('Loss', loss, epoch * len(self.train_dataset) + step)
-                    self.writer.add_scalar('Val Loss', val_loss, epoch * len(self.train_dataset) + step)
+                    self.writer.add_scalar('Loss', loss, step)
+                    self.writer.add_scalar('Val Loss', val_loss, step)
 
                     print("Epoch: {}/{} | Step: {} | Loss: {:.5f} | Val_Loss: {:.5f}".format(
                             epoch + 1, self.n_epochs, step, loss, val_loss))                    

@@ -2,7 +2,8 @@ data
 .vscode
 __pycache__
 nuscenes-devkit
-result
+dataset_backup.py
+result/model
+result/tensorboard
 trajectory-sets/*.pkl
 *.pth
-parsingcheck_py

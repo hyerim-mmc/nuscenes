@@ -6,7 +6,6 @@ from matplotlib import pyplot as plt
 from config import Config
 from torch.utils.data.dataset import Dataset
 from nuscenes.nuscenes import NuScenes
-from nuscenes.map_expansion.map_api import NuScenesMap
 from nuscenes.prediction.helper import PredictHelper
 from nuscenes.eval.prediction.splits import get_prediction_challenge_split
 from nuscenes.prediction.input_representation.agents import AgentBoxesWithFadedHistory
@@ -14,9 +13,6 @@ from nuscenes.prediction.input_representation.agents import AgentBoxesWithFadedH
 from nuscenes.prediction.input_representation.static_layers import StaticLayerRasterizer
 from nuscenes.prediction.input_representation.interface import InputRepresentation
 from nuscenes.prediction.input_representation.combinators import Rasterizer
-from typing import Optional, List, Dict, Tuple
-
-
 
 
 class NuSceneDataset(Dataset):
@@ -40,22 +36,16 @@ class NuSceneDataset(Dataset):
             self.val_set = get_prediction_challenge_split("mini_val", dataroot=self.dataroot)
             self.mode = 'mini'
 
-        self.bbox_size = config.bbox_size_limit
         self.img_layers_list = config.img_map_layers_list
-        self.map_layers_list = config.map_layers_list
-        self.lane_type = config.lane_type
         self.color_list = []
         for i in range(len(self.img_layers_list)):
             self.color_list.append((255,255,255))
 
-        self.canvas_size = config.canvas_size
-        self.fig_size = config.fig_size
         self.resolution = config.resolution                 
         self.meters_ahead = config.meters_ahead
         self.meters_behind = config.meters_behind
         self.meters_left = config.meters_left 
         self.meters_right = config.meters_right 
-        self.patch_angle = config.patch_angle
 
         self.num_past_hist = config.num_past_hist
         self.num_future_hist = config.num_future_hist
@@ -80,8 +70,6 @@ class NuSceneDataset(Dataset):
                                             combinator=Rasterizer())     
         self.show_imgs = config.show_imgs
         self.save_imgs = config.save_imgs
-        self.show_maps = config.show_maps
-        self.save_maps = config.save_maps
 
         self.num_max_agent = config.num_max_agent
         if self.save_imgs:
@@ -91,7 +79,6 @@ class NuSceneDataset(Dataset):
                 utils.save_imgs(self, self.val_set, self.set + 'val', self.input_repr)
         
   
-
     def __len__(self):
         if self.train_mode:
             return len(self.train_set)
@@ -139,50 +126,45 @@ class NuSceneDataset(Dataset):
         return num_agents, agents
 
 
-
     def __getitem__(self, idx):
         if self.train_mode:
             self.dataset = self.train_set
         else:
             self.dataset = self.val_set
-        print("3333333333333333333333333333333333333333333: ", idx)
+
         #################################### Ego states ####################################
         ego_instance_token, ego_sample_token = self.dataset[idx].split("_")
         ego_annotation = self.helper.get_sample_annotation(ego_instance_token, ego_sample_token)
 
         ego_pose = np.array(utils.get_pose_from_annot(ego_annotation))
+
         ego_vel = self.helper.get_velocity_for_agent(ego_instance_token, ego_sample_token)
         ego_accel = self.helper.get_acceleration_for_agent(ego_instance_token, ego_sample_token)
         ego_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
-
-        # Filter unresonable data (make nan to zero)
-        [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])        
+        [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])                        # Filter unresonable data (make nan to zero)
         ego_states = np.array([ego_vel, ego_accel, ego_yawrate])
 
         # GLOBAL history
+        ego_past_hist = np.zeros((self.num_past_hist, 3))
+        ego_future_hist = np.zeros((self.num_future_hist, 3))
         past = self.helper.get_past_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
                                             seconds=int(self.num_past_hist/2), in_agent_frame=False, just_xy=False)  
         future = self.helper.get_future_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
                                             seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False)
-        ego_hist_num_mask = [len(past), len(future)]
+        ego_hist_num_mask = np.array([len(past), len(future)])        
+        ego_past_hist[:len(past)] = utils.get_pose(past)        
+        ego_future_hist[:len(future)] = utils.get_pose(future)
 
 
         #################################### Agent states ####################################
-        # Select agents nearby Ego
         num_agents, agents_list = self.select_agents(ego_sample_token=ego_sample_token, ego_pose=ego_pose)
 
-        agent_local_pose_list = []
-        agent_states_list = []
-        agent_past_local_poses_list = []
-        agent_future_local_poses_list = []
-        num_agent_past_hist = []
-        num_agent_future_hist = []
-        # agent_local_pose_list = np.zeros((self.num_max_agent, 3))
-        # agent_states_list = np.zeros((self.num_max_agent, 3))
-        # agent_past_local_poses_list = np.zeros((self.num_max_agent, self.num_past_hist, 3))
-        # agent_future_local_poses_list = np.zeros((self.num_max_agent, self.num_future_hist, 3))
-        # num_agent_past_hist = np.zeros((self.num_max_agent, self.num_past_hist), dtype=np.int)
-        # num_agent_future_hist = np.zeros((self.num_max_agent, self.num_future_hist), dtype=np.int)
+        agent_current_pose_list = np.zeros((self.num_max_agent, 3))
+        agent_states_list = np.zeros((self.num_max_agent, 3))
+        agent_past_local_poses_list = np.zeros((self.num_max_agent, self.num_past_hist, 3))
+        agent_future_local_poses_list = np.zeros((self.num_max_agent, self.num_future_hist, 3))
+        num_agent_past_hist = np.zeros(self.num_max_agent, dtype=np.int)
+        num_agent_future_hist = np.zeros(self.num_max_agent, dtype=np.int)
 
         for i in range(num_agents):
             assert num_agents == len(agents_list), "num_agents != len(agents_list)"
@@ -192,74 +174,47 @@ class NuSceneDataset(Dataset):
             sample_token_agent = agents_list[i]['sample_token']
             agent_annotation = self.helper.get_sample_annotation(instance_token_agent, sample_token_agent)
 
+            ## 1) agent current pose
             agent_pose = utils.get_pose_from_annot(agent_annotation)
             agent_local_pose = utils.convert_global_to_local_forpose(ego_pose, agent_pose)
-            agent_local_pose_list.append(agent_local_pose)
-            # agent_local_pose_list[:len(agent_local_pose), ]
+            agent_current_pose_list[i,:] = agent_local_pose
+
+            ## 2) agent current state (vel, acc, yawrate)
             agent_vel = self.helper.get_velocity_for_agent(instance_token_agent, sample_token_agent)
             agent_accel = self.helper.get_acceleration_for_agent(instance_token_agent, sample_token_agent)
             agent_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
-            
-            # Filter unresonable data (make nan to zero)
-            [agent_vel, agent_accel, agent_yawrate] = utils.data_filter([agent_vel, agent_accel, agent_yawrate])        
+        
+            [agent_vel, agent_accel, agent_yawrate] = utils.data_filter([agent_vel, agent_accel, agent_yawrate])        # Filter unresonable data (make nan to zero)
             agent_states = np.array([agent_vel, agent_accel, agent_yawrate])
-            agent_states_list.append(agent_states)
+            agent_states_list[i,:] = agent_states
 
-            # Agent LOCAL history 
+            ## 3) agent LOCAL past/future history 
             past_global_poses = self.helper.get_past_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=int(self.num_past_hist/2), in_agent_frame=False, just_xy=False)  
 
             future_global_poses = self.helper.get_future_for_agent(instance_token=instance_token_agent, sample_token=sample_token_agent, 
                                                 seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False) 
             
-
-            print("idx : ", i)
-            # if past_global_poses == [] or future_global_poses == []:
-            #     print("out")
-            #     num_agents -= 1
-            #     continue
-            # else:
-            print("num_agent :", num_agents)
-            print("11:", past_global_poses)
             past_global_poses = utils.get_pose(past_global_poses)
             future_global_poses = utils.get_pose(future_global_poses)
-            print("22:", past_global_poses)
-            print("22 shape:", type(past_global_poses), np.shape(past_global_poses))
             agent_past_local_poses = utils.convert_global_to_local_forhistory(ego_pose, past_global_poses)            
             agent_future_local_poses = utils.convert_global_to_local_forhistory(ego_pose, future_global_poses)
 
-            num_agent_past_hist.append(len(agent_past_local_poses))
-            num_agent_future_hist.append(len(agent_future_local_poses))
+            num_agent_past_hist[i] = len(agent_past_local_poses)
+            num_agent_future_hist[i] = len(agent_future_local_poses)
+            print("past : " ,agent_past_local_poses)
+            print("future : ",agent_future_local_poses)
 
-            print("before : ",agent_past_local_poses)
-            agent_past_local_poses = utils.check_shape(agent_past_local_poses, self.num_past_hist, dim=2)
-            agent_future_local_poses = utils.check_shape(agent_future_local_poses, self.num_future_hist, dim=2)
-            print("after : ", agent_past_local_poses)
-            if i==0:
-                agent_past_local_poses_list = np.array(agent_past_local_poses)                
-                agent_future_local_poses_list = np.array(agent_future_local_poses)
+            if agent_past_local_poses.size == 0:
+                agent_past_local_poses = np.zeros((self.num_past_hist, 3))
+                print("p")
+            if agent_future_local_poses.size == 0:
+                agent_future_local_poses = np.zeros((self.num_future_hist, 3))
+                print("f")
+            # print("agentfuture_shape : ", agent_future_local_poses)
+            agent_past_local_poses_list[i,:len(agent_past_local_poses)] = agent_past_local_poses
+            agent_future_local_poses_list[i,:len(agent_future_local_poses)] = agent_future_local_poses
 
-            else:
-                agent_past_local_poses_list = np.concatenate([agent_past_local_poses_list, agent_past_local_poses], axis=0)
-                print("shape1: ", np.shape(agent_past_local_poses_list))
-                print("shape2: ", np.shape(agent_past_local_poses))          
-                agent_future_local_poses_list = np.concatenate([agent_future_local_poses_list, agent_future_local_poses], axis=0)          
-                print("shape3: ", np.shape(agent_future_local_poses_list))
-                print("shape4: ", np.shape(agent_future_local_poses)) 
-            # agent_past_local_poses_np = agent_past_local_poses_list.reshape(-1, self.num_past_hist, 3)
-            # agent_future_local_poses_np = agent_future_local_poses_list.reshape(-1, self.num_future_hist, 3)
-
-
-        # unify shape of variant data
-        past_poses_m = utils.get_pose2(past, self.num_past_hist)
-        future_poses_m = utils.get_pose2(future, self.num_future_hist)
-
-        agent_local_pose_list_m = utils.check_shape(agent_local_pose_list, self.num_max_agent, dim=2)
-        agent_states_list_m = utils.check_shape(agent_states_list, self.num_max_agent, dim=2)
-        # agent_past_local_poses_list_m = utils.check_shape(agent_past_local_poses_np, self.num_max_agent, dim=3)        
-        # agent_future_local_poses_list_m = utils.check_shape(agent_future_local_poses_np, self.num_max_agent, dim=3)
-        num_agent_past_hist_m = utils.check_shape(num_agent_past_hist, self.num_max_agent, dim=1)
-        num_agent_future_hist_m = utils.check_shape(num_agent_future_hist, self.num_max_agent, dim=1)
 
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
@@ -268,42 +223,46 @@ class NuSceneDataset(Dataset):
             plt.imshow(img)
             plt.show()
 
-
         return {
                 'img'                  : img,                                                         # Type : np.array
                 # ego vehicle                                                   
                 'ego_cur_pos'          : ego_pose,                                                    # Type : np.array([global_x,globa_y,global_yaw])                        | Shape : (3, )
                 'ego_state'            : ego_states,                                                  # Type : np.array([vel,accel,yaw_rate]) --> local(ego's coord)          | Shape : (3, )                        | Unit : [m/s, m/s^2, rad/sec]    
-                'ego_hist_num_mask'    : ego_hist_num_mask,                                           # Type : list, [self.num_past_hist, self.num_future_hist]  ... for masking history array 
-                'past_global_ego_pos'  : past_poses_m,                                                # Type : np.array([global_x, global_y, global_yaw])                     | Shape : (self.num_past_hist, 3)
-                'future_global_ego_pos': future_poses_m,                                              # Type : np.array([global_x, global_y, global_yaw])                     | Shape : (self.num_future_hist, 3)
+                'num_ego_hist'         : ego_hist_num_mask,                                           # Type : np.array([self.num_past_hist, self.num_future_hist])  ... for masking history array 
+                'past_global_ego_pos'  : ego_past_hist,                                               # Type : np.array([global_x, global_y, global_yaw])                     | Shape : (self.num_past_hist, 3)
+                'future_global_ego_pos': ego_future_hist,                                             # Type : np.array([global_x, global_y, global_yaw])                     | Shape : (self.num_future_hist, 3)
+                
                 # agents nearby ego (all local data in ego coordinate)
                 'num_agents'           : num_agents,
-                'agent_cur_pose'       : np.array(agent_local_pose_list_m),                           # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, 3)
-                'agent_state'          : np.array(agent_states_list_m),                               # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)    | Shape : (self.num_max_agent, 3)       | Unit : [m/s, m/s^2, rad/sec]     
-                # 'agent_past_pose'      : np.array(agent_past_local_poses_list_m),                     # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, self.num_past_hist, 3)
-                # 'agent_future_pose'    : np.array(agent_future_local_poses_list_m),                   # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, self.num_future_hist, 3)
-                'num_agent_past_hist'  : np.array(num_agent_past_hist_m),                             # Type : np.array([len_past_history for each agent])                    | Shape : (self.num_past_hist, )    
-                'num_agent_future_hist': np.array(num_agent_future_hist_m)                            # Type : np.array([len_future_history for each agent])                  | Shape : (self.num_future_hist, )  
+                'agent_cur_pose'       : agent_current_pose_list,                                     # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, 3)
+                'agent_state'          : agent_states_list,                                           # Type : np.row_stack([vel,accel,yaw_rate]) --> local(agent's coord)    | Shape : (self.num_max_agent, 3)       | Unit : [m/s, m/s^2, rad/sec]     
+                'agent_past_pose'      : agent_past_local_poses_list,                                 # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, self.num_past_hist, 3)
+                'agent_future_pose'    : agent_future_local_poses_list,                               # Type : np.row_stack([local_x, local_y, local_yaw])                    | Shape : (self.num_max_agent, self.num_future_hist, 3)
+                'num_agent_past_hist'  : num_agent_past_hist,                                         # Type : np.array([len_past_history for each agent])                    | Shape : (self.num_past_hist, )    
+                'num_agent_future_hist': num_agent_future_hist                                        # Type : np.array([len_future_history for each agent])                  | Shape : (self.num_future_hist, )  
                 }
 
         # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
         # History List of records.  The rows decrease with time, i.e the last row occurs the farthest in the past.
 
     
-
 if __name__ == "__main__":
     dataset = NuSceneDataset(train_mode=True)
-    for i in range(dataset.__len__()):
-        dataset.__getitem__(i)
+    # print(dataset.__len__())
+    # # for i in range(dataset.__len__()):
+    # #     print("here is  : ", i)
+    # d=dataset.__getitem__(0)
 
-    # from torch.utils.data.dataloader import DataLoader
-    # from dataset import NuSceneDataset
+
+    from torch.utils.data.dataloader import DataLoader
+    from dataset import NuSceneDataset
 
     # dataset = NuSceneDataset(train_mode=False)
 
-    # print(dataset.__len__())
-    # dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    print(dataset.__len__())
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
     
-    # for d in dataloader:
-    #     print("Cc")
+    step = 1
+    for d in dataloader:
+        print(step)
+        step +=1

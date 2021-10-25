@@ -43,6 +43,7 @@ class NuSceneDataset_CoverNet(Dataset):
             self.mode = 'mini'
             self.train_set = get_prediction_challenge_split("mini_train", dataroot=self.dataroot)
             self.val_set = get_prediction_challenge_split("mini_val", dataroot=self.dataroot)
+
             if self.intersection_use:
                 self.train_set = intersection_dataload.token_save(self.train_set)
                 self.val_set = intersection_dataload.token_save(self.val_set)
@@ -102,6 +103,7 @@ class NuSceneDataset_CoverNet(Dataset):
     def get_label(self, trajectory_set, ground_truth):
         return self.mean_pointwise_l2_distance(trajectory_set, ground_truth)
 
+
     def mean_pointwise_l2_distance(self, lattice: torch.Tensor, ground_truth: torch.Tensor) -> torch.Tensor:
         """
         Computes the index of the closest trajectory in the lattice as measured by l1 distance.
@@ -124,25 +126,24 @@ class NuSceneDataset_CoverNet(Dataset):
         ego_vel = self.helper.get_velocity_for_agent(ego_instance_token, ego_sample_token)
         ego_accel = self.helper.get_acceleration_for_agent(ego_instance_token, ego_sample_token)
         ego_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
-
-        # Filter unresonable data (make nan to zero)
-        [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])        
+        [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])                # Filter unresonable data (make nan to zero)
         ego_states = np.array([[ego_vel, ego_accel, ego_yawrate]])
 
         # GLOBAL history
+        future_poses_m = np.zeros((self.num_future_hist, 3))
         future = self.helper.get_future_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
                                             seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False)
-        future_poses_m = utils.get_pose2(future, self.num_future_hist)
+        num_future_mask = len(future)
+        future_poses_m[:len(future)] = utils.get_pose(future)
 
         # Get label
         gt_tensor = torch.Tensor(future_poses_m[:,:2]).unsqueeze(0)
         trajectories_tensor = self.trajectories_set[:,:self.num_future_hist]
-
         label = self.get_label(trajectories_tensor, gt_tensor)
+
 
         #################################### Image processing ####################################
         img = self.input_repr.make_input_representation(instance_token=ego_instance_token, sample_token=ego_sample_token)
-        
         if self.show_imgs:
             plt.figure('input_representation')
             plt.imshow(img)
@@ -150,10 +151,20 @@ class NuSceneDataset_CoverNet(Dataset):
 
         img = torch.Tensor(img).permute(2,0,1).to(device=self.device)
 
+
         return {'img'                  : img,                          # Type : torch.Tensor
                 'ego_state'            : ego_states,                   # Type : np.array([[vel,accel,yaw_rate]]) --> local(ego's coord)   |   Unit : [m/s, m/s^2, rad/sec]    
                 'future_global_ego_pos': future_poses_m,               # Type : np.array([global_x, global_y, global_yaw]) .. ground truth data
+                'num_future_mask'      : num_future_mask,              # a number for masking future history
                 'label'                : label                         # calculated label data from preprocessed_trajectory_set using ground truth data
                 }
 
     
+# if __name__ == '__main__':
+#     train_dataset = NuSceneDataset_CoverNet(train_mode=True, config_file_name='./covernet/covernet_config.json', verbose=True)
+#     print(len(train_dataset))
+#     print(train_dataset.__len__())
+
+#     val_dataset = NuSceneDataset_CoverNet(train_mode=False, config_file_name='./covernet/covernet_config.json', verbose=True)
+#     print(len(val_dataset))
+#     print(val_dataset.__len__())
