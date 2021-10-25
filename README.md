@@ -33,10 +33,9 @@ Please check DATASET_PATH in advance!
 
 Check more details about config and dataset output format in ```instruction.md```
 
-1. Dataset Processing (STILL MAINTAINING)
-    - Write own parsing configuration ```config.py```
-    - Run ```python dataset.py``` for check
-    - Use dataset for Dataloader
+1. Dataset Processing
+    - Write own parsing configuration ```config.py``` or ```dataset_mini/mini_config.json```
+    - Use ```python dataset.py``` or ```datasetmini/dataset_mini.py``` for Dataloader
     
 2. CoverNet Implementation (NOT COMPLETED)
     - Download the [trajectory sets](https://www.nuscenes.org/public/nuscenes-prediction-challenge-trajectory-sets.zip)
