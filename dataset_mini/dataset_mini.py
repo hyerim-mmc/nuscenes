@@ -122,18 +122,15 @@ class NuSceneDataset_Mini(Dataset):
         ego_vel = self.helper.get_velocity_for_agent(ego_instance_token, ego_sample_token)
         ego_accel = self.helper.get_acceleration_for_agent(ego_instance_token, ego_sample_token)
         ego_yawrate = self.helper.get_heading_change_rate_for_agent(ego_instance_token, ego_sample_token)
-
-        # Filter unresonable data (make nan to zero)
-        [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])        
+        [ego_vel, ego_accel, ego_yawrate] = utils.data_filter([ego_vel, ego_accel, ego_yawrate])                # Filter unresonable data (make nan to zero)
         ego_states = np.array([[ego_vel, ego_accel, ego_yawrate]])
 
         # GLOBAL history
-        past = self.helper.get_past_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
-                                            seconds=self.num_past_hist, in_agent_frame=False, just_xy=False)  
+        future_poses_m = np.zeros((self.num_future_hist, 3))
         future = self.helper.get_future_for_agent(instance_token=ego_instance_token, sample_token=ego_sample_token, 
-                                            seconds=self.num_future_hist, in_agent_frame=False, just_xy=False)
-        future_poses_m = utils.get_pose2(future, self.num_future_hist)
+                                            seconds=int(self.num_future_hist/2), in_agent_frame=False, just_xy=False)
         num_future_mask = len(future)
+        future_poses_m[:len(future)] = utils.get_pose(future)
 
 
         #################################### Image processing ####################################
@@ -153,3 +150,10 @@ class NuSceneDataset_Mini(Dataset):
         # When {vel, accel, yaw_rate} is nan, it will be shown as 0 
         # History List of records.  The rows decrease with time, i.e the last row occurs the farthest in the past.
 
+
+if __name__ == "__main__":
+    dataset = NuSceneDataset_Mini(train_mode=True, config_file_name='./dataset_mini/mini_config.json')
+    print(dataset.__len__())
+    for i in range(dataset.__len__()):
+        print("here is  : ", i)
+        dataset.__getitem__(0)

@@ -4,7 +4,7 @@
         "dataset_str" : "v1.0-mini",
         "dataset_path" : "/home/hyerim/data/sets/nuscenes",
         "intersection_use" : false,
-        "img_preprocess" : true
+        "img_preprocess" : false
     },
 
     "LEARNING" : {
@@ -34,6 +34,6 @@
         "meters_behind" : 10,
         "meters_left" : 25,
         "meters_right" : 25,        
-        "num_max_agent" : 10,
+        "num_max_agent" : 10
     }
 }
