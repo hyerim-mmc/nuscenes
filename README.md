@@ -37,9 +37,9 @@ Check more details about config and dataset output format in ```instruction.md``
     - ```dataset.py``` samples img, ego_vehicle_state, ego past/future history, agent data etc. 
     - ```dataset_mini/dataset_mini.py``` samples img, ego_vehicle_state, ego_future_history
 
-    
+
     - Write own parsing configuration ```config.py``` or ```dataset_mini/mini_config.json```
-    - Use ```python dataset.py``` or ```datasetmini/dataset_mini.py``` for Dataloader
+    - Use ```python dataset.py``` or ```dataset_mini/dataset_mini.py``` for Dataloader
     
 2. CoverNet Implementation (NOT COMPLETED)
     - Download the [trajectory sets](https://www.nuscenes.org/public/nuscenes-prediction-challenge-trajectory-sets.zip)
