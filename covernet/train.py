@@ -75,14 +75,14 @@ class CoverNet_train:
                 self.optimizer.zero_grad()
                 loss = self.criterion(prediction,label)
 
-                # print("prediction size : ",prediction.size())
-                # print("label size : ",label.size())
-                # print("label type : ",type(label))
-                # gt_loss = self.criterion(label,torch.LongTensor(label))
-                # print(gt_loss)
+                print("prediction size : ",prediction.size())
+                print("label size : ",label.size())
+                print("label type : ",type(label))
+                gt_loss = self.criterion(label,label)
+                print(gt_loss)
                 loss.backward()
                 self.optimizer.step()
-                
+
                 step += 1
                 with torch.no_grad():
                     Loss.append(loss.cpu().detach().numpy())

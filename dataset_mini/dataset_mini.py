@@ -153,7 +153,20 @@ class NuSceneDataset_Mini(Dataset):
 
 if __name__ == "__main__":
     dataset = NuSceneDataset_Mini(train_mode=True, config_file_name='./dataset_mini/mini_config.json')
+#     print(dataset.__len__())
+#     for i in range(dataset.__len__()):
+#         print("here is  : ", i)
+#         dataset.__getitem__(0)
+
+    from torch.utils.data.dataloader import DataLoader
+
+
+    # dataset = NuSceneDataset(train_mode=False)
+
     print(dataset.__len__())
-    for i in range(dataset.__len__()):
-        print("here is  : ", i)
-        dataset.__getitem__(0)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    
+    step = 1
+    for d in dataloader:
+        print(step)
+        step +=1
