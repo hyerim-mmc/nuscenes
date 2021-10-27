@@ -12,10 +12,10 @@
         "momentum" : 0.9,
         "n_epochs" : 50,
         "num_modes" : 64,
-        "batch_size" : 8,
+        "batch_size" : 4,
         "val_batch_size" : 1,
         "num_val_data" : 4,
-        "print_size" : 3,
+        "print_size" : 1,
         "weight_path" : "./resnet50-19c8e357.pth",
         "trajectory_set_path" : "./trajectory-sets/epsilon_8.pkl",
         "model_save_path" : "./result/model"

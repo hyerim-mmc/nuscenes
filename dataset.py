@@ -202,16 +202,12 @@ class NuSceneDataset(Dataset):
 
             num_agent_past_hist[i] = len(agent_past_local_poses)
             num_agent_future_hist[i] = len(agent_future_local_poses)
-            # print("past : " ,agent_past_local_poses)
-            # print("future : ",agent_future_local_poses)
 
             if agent_past_local_poses.size == 0:
                 agent_past_local_poses = np.zeros((self.num_past_hist, 3))
-                # print("p")
             if agent_future_local_poses.size == 0:
                 agent_future_local_poses = np.zeros((self.num_future_hist, 3))
-                # print("f")
-            # print("agentfuture_shape : ", agent_future_local_poses)
+
             agent_past_local_poses_list[i,:len(agent_past_local_poses)] = agent_past_local_poses
             agent_future_local_poses_list[i,:len(agent_future_local_poses)] = agent_future_local_poses
 

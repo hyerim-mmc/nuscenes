@@ -8,11 +8,13 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import json
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from torch import nn
 from datetime import datetime
 from utils import Json_Parser
 from network import CoverNet
+
 from torch.utils.data.dataloader import DataLoader
 from dataset_covernet import NuSceneDataset_CoverNet
 from nuscenes.prediction.models.backbone import ResNetBackbone
@@ -58,6 +60,7 @@ class CoverNet_train:
     def run(self):
         print("CoverNet learning starts!")
         step = 1
+        best_val_loss = 10000
         for epoch in range(self.n_epochs + 1):
             Loss, Val_Loss = [], []
 
@@ -70,16 +73,17 @@ class CoverNet_train:
                 agent_state_tensor = torch.squeeze(agent_state_tensor, 1)
 
                 prediction = self.model(img_tensor, agent_state_tensor)
+                pred = F.softmax(prediction,dim=-1)
                 label = data['label']
 
                 self.optimizer.zero_grad()
-                loss = self.criterion(prediction,label)
+                loss = self.criterion(pred,label)
 
-                print("prediction size : ",prediction.size())
-                print("label size : ",label.size())
-                print("label type : ",type(label))
-                gt_loss = self.criterion(label,label)
-                print(gt_loss)
+                ## for calculating gt loss
+                label_onehot = F.one_hot(label, num_classes=self.num_modes)
+                gt_loss = self.criterion(label_onehot.float(),label)
+                # print("gt_loss : ",gt_loss)
+
                 loss.backward()
                 self.optimizer.step()
 
@@ -110,6 +114,12 @@ class CoverNet_train:
                             
                     loss = np.array(Loss).mean()
                     val_loss = np.array(Val_Loss).mean()
+
+                    if val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                        save_path = os.path.join(self.net_save_path, 'best_val_loss_model.pth')
+                        torch.save(self.model.state_dict(), save_path)
+                        self.writer.add_scalar('Best Val Loss', best_val_loss)
 
                     self.writer.add_scalar('Loss', loss, step)
                     self.writer.add_scalar('Val Loss', val_loss, step)
