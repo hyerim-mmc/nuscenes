@@ -1,7 +1,5 @@
-# Nuscenes Dataset processing & CoverNet Implementation
-This repository contains an implementation of [CoverNet](https://arxiv.org/pdf/1911.10298.pdf) and Nuscenes dataset processing.
-
-*Phan-Minh, Tung, et al. "Covernet: Multimodal behavior prediction using trajectory sets." Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2020.*
+# Nuscenes Dataset processing
+This repository contains Nuscenes dataset processing.
 
 ## Setup
 1. Download Repository ```git clone https://github.com/hyerim-mmc/nuscenes.git```
@@ -24,8 +22,7 @@ This repository contains an implementation of [CoverNet](https://arxiv.org/pdf/1
    
    - Extract the contents (folders basemap, expansion and prediction) to your nuScenes maps folder. 
 4. Download [Nuscenes-devkit](https://github.com/nutonomy/nuscenes-devkit#getting-started-with-nuscenes)
-5. Download [Pytorch](https://pytorch.org/get-started/locally/)
-6. Download Tensorboard ```pip install tensorboard``` or ```conda install tensorboard```
+
 
 ## Run
 Please check DATASET_PATH in advance!
@@ -33,7 +30,8 @@ Please check DATASET_PATH in advance!
 
 Check more details about config and dataset output format in ```instruction.md```
 
-1. Dataset Processing (Choose ```dataset.py``` or ```dataset_mini.py```)
+
+Choose Dataset Processing type from ```dataset.py``` or ```dataset_mini.py```
     - ```dataset.py``` samples img, ego_vehicle_state, ego past/future history, agent data etc. 
     - ```dataset_mini/dataset_mini.py``` samples img, ego_vehicle_state, ego_future_history
 
@@ -41,9 +39,3 @@ Check more details about config and dataset output format in ```instruction.md``
     - Write own parsing configuration ```config.py``` or ```dataset_mini/mini_config.json```
     - Use ```python dataset.py``` or ```dataset_mini/dataset_mini.py``` for Dataloader
     
-2. CoverNet Implementation (NOT COMPLETED)
-    - Download the [trajectory sets](https://www.nuscenes.org/public/nuscenes-prediction-challenge-trajectory-sets.zip)
-    - Write own parsing/learning configuration ```covernet/covernet_config.json```
-    - Run ```python covernet/train.py```
-    - Results will be saved in ```covernet/result``` folder
-    - Check Tensorboard results using ```tensorboard --logdir=./result/tensorboard``` and click the website
