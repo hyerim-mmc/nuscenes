@@ -34,8 +34,8 @@ class CoverNet_train:
         self.num_modes = self.config['LEARNING']['num_modes']
         self.print_size = self.config['LEARNING']['print_size']
 
-        self.train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name=config_file, verbose=verbose), batch_size=self.batch_size, shuffle=True)
-        self.val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file, verbose=verbose), batch_size=self.val_batch_size, shuffle=True)
+        self.train_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=True, config_file_name=config_file, verbose=verbose), batch_size=self.batch_size, shuffle=True, num_workers=4)
+        self.val_dataset = DataLoader(NuSceneDataset_CoverNet(train_mode=False, config_file_name=config_file, verbose=verbose), batch_size=self.val_batch_size, shuffle=True, num_workers=4)
 
         self.backbone = ResNetBackbone('resnet50')
         # self.resnet_path = self.config['LEARNING']['weight_path']

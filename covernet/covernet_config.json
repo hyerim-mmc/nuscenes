@@ -12,7 +12,7 @@
         "momentum" : 0.9,
         "n_epochs" : 50,
         "num_modes" : 64,
-        "batch_size" : 4,
+        "batch_size" : 2,
         "val_batch_size" : 1,
         "num_val_data" : 4,
         "print_size" : 1,
